@@ -1,6 +1,6 @@
-% TIFFStack - Manipulate a TIFF file like a tensor
+% <strong>TIFFStack</strong> - Manipulate a TIFF file like a tensor
 % 
-% Usage: tsStack = TIFFStack(strFilename <, bInvert, vnInterleavedFrameDims>)
+% Usage: tsStack = <<strong>TIFFStack</strong>(strFilename <, bInvert, vnInterleavedFrameDims>)
 % 
 % A TIFFStack object behaves like a read-only memory mapped TIFF file.  The
 % entire image stack is treated as a matlab tensor.  Each frame of the file must
@@ -13,11 +13,11 @@
 % D R Muir and B M Kampa, 2015. "FocusStack and StimServer: a new open
 %    source MATLAB toolchain for visual stimulation and analysis of two-photon
 %    calcium neuronal imaging data". Frontiers in Neuroinformatics 8 (85).
-%    DOI: 10.3389/fninf.2014.00085
+%    DOI: <a href="http://dx.doi.org/10.3389/fninf.2014.00085">10.3389/fninf.2014.00085</a>
 % 
 % This class attempts to use the version of tifflib built-in to recent
 % versions of Matlab, if available.  Otherwise this class uses a modified
-% version of tiffread [1, 2] to read data.
+% version of tiffread [2, 3] to read data.
 %
 % permute, ipermute and transpose are now transparantly supported. Note
 % that to read a pixel, the entire frame containing that pixel is read. So
@@ -36,8 +36,7 @@
 %
 % -------------------------------------------------------------------------
 % 
-% Construction:
-% 
+% <strong>Construction</strong>
 % >> tsStack = TIFFStack('test.tiff');       % Construct a TIFF stack associated with a file
 % 
 % >> tsStack = TIFFStack('test.tiff', true); % Indicate that the image data should be inverted
@@ -75,8 +74,7 @@
 % 
 % -------------------------------------------------------------------------
 %
-% De-interleaving frame dimensions in complex stacks
-%
+% <strong>De-interleaving frame dimensions in complex stacks</strong>
 % Some TIFF generation software stores multiple samples per pixel as
 % interleaved frames in a TIFF file. Other complex stacks may include
 % multiple different images per frame of time (e.g. multiple cameras or
@@ -123,8 +121,7 @@
 %
 % -------------------------------------------------------------------------
 %
-% ImageJ stacks
-%
+% <strong>ImageJ stacks</strong>
 % ImageJ HyperStacks are automatically deinterleaved, if encountered. By
 % default, the stacks will be presented as [Y X T Z C]. They can of course
 % be permuted. If desired, the interleaving can be overridden by providing
@@ -136,10 +133,15 @@
 % MappedTensor is not available, a warning will be issued.
 %
 % References:
-% [1] Francois Nedelec, Thomas Surrey and A.C. Maggs. Physical Review Letters
-%        86: 3192-3195; 2001. DOI: 10.1103/PhysRevLett.86.3192
+% [1] D R Muir and B M Kampa, 2015. "FocusStack and StimServer: a new open
+%        source MATLAB toolchain for visual stimulation and analysis of two-photon
+%        calcium neuronal imaging data". Frontiers in Neuroinformatics 8 (85).
+%        DOI: <a href="http://dx.doi.org/10.3389/fninf.2014.00085">10.3389/fninf.2014.00085</a>
+%
+% [2] Francois Nedelec, Thomas Surrey and A.C. Maggs. Physical Review Letters
+%        86: 3192-3195; 2001. DOI: <a href="http://dx.doi.org/10.1103/PhysRevLett.86.3192">10.1103/PhysRevLett.86.3192</a>
 % 
-% [2] http://www.embl.de/~nedelec/
+% [3] <a href="http://www.cytosim.org">http://www.cytosim.org</a>
 
 % Author: Dylan Muir <muir@hifo.uzh.ch>
 % Created: 28th June, 2011
@@ -159,7 +161,8 @@ classdef TIFFStack < handle
       bForceTiffread       % - Force the use of tiffread, rather than trying to use TiffLib
       vnDataSize;          % - Cached size of the TIFF stack
       vnApparentSize;      % - Apparent size of the TIFF stack
-      TIF;                 % \_ Cached header info for tiffread31 speedups
+      TIF;                 % \
+      TIF_tr31;            % |- Cached header info for tiffread31 speedups
       HEADER;              % /
       bUseTiffLib;         % - Flag indicating whether TiffLib is being used
       bMTStack;            % - Flag indicating MappedTensor is being used
@@ -230,12 +233,12 @@ classdef TIFFStack < handle
          
          % - Get image information
          try
-            % - Read and save image information
-            sInfo = imfinfo(strFilename);
-            oStack.sImageInfo = sInfo;
-
+            % - Read and store image information (using tiffread for speed and compatibility)
+            [oStack.TIF, oStack.HEADER, sInfo] = tiffread31_header(strFilename);
+            oStack.TIF_tr31 = oStack.TIF;
+            
             % - Detect a ImageJ fake BigTIFF stack
-            [bIsImageJBigStack, bIsImageJHyperStack, vnStackDims, vnInterleavedIJFrameDims] = IsImageJBigStack(sInfo);
+            [bIsImageJBigStack, bIsImageJHyperStack, vnStackDims, vnInterleavedIJFrameDims] = IsImageJBigStack(tiffread31_readtags(oStack.TIF_tr31, oStack.HEADER, 1), numel(oStack.HEADER));
             
             % - Handle ImageJ big stacks with MappedTensor
             if (bIsImageJBigStack)
@@ -248,19 +251,27 @@ classdef TIFFStack < handle
                   bIsImageJHyperStack = false;
                   
                   warning('TIFFStack:ImageJBigStackUnsupported', ...
-                          '--- TIFFStack: This is an ImageJ "fake" TIF file. MappedTensor must be available to read this file.');
+                          '--- TIFFStack: Warning: This is an ImageJ "fake" TIF file. MappedTensor must be available to read this file.');
                end
             end
             
-            % - Deinterleave hyperstacks automatically
-            if (bIsImageJHyperStack && isempty(vnInterleavedFrameDims))
-               vnInterleavedFrameDims = vnInterleavedIJFrameDims;
+            % - Detect a very long stack
+            if ((numel(sInfo) > 2^16) && oStack.bUseTiffLib)
+               warning('TIFFStack:LongStack', ...
+                       '--- TIFFSTack: Warning: This stack has more than 2^16 frames, so Matlab/tifflib cannot read it natively.\n       Using slower non-Tifflib access.');
+               oStack.bUseTiffLib = false;
             end
             
+            % - Deinterleave hyperstacks automatically
+            bImageJDeinterleaving = bIsImageJHyperStack && isempty(vnInterleavedFrameDims);
+            if bImageJDeinterleaving
+               vnInterleavedFrameDims = vnInterleavedIJFrameDims;
+            end
+
             % - Initialise object, depending on underlying access method
             if (oStack.bMTStack)
                % - Fix up stack size
-               sInfo = repmat(sInfo, vnStackDims(3), 1);
+               sInfo = repmat(sInfo(1), vnStackDims(3), 1);
                
             elseif (oStack.bUseTiffLib)
                % - Create a Tiff object
@@ -374,15 +385,33 @@ classdef TIFFStack < handle
                % - Fix up rows per strip (inconsistency between Windows and
                % OS X Tifflib
                nRowsPerStrip = TiffgetTag(oStack.TIF, 'RowsPerStrip');
-               if (nRowsPerStrip ~= oStack.sImageInfo(1).RowsPerStrip)
-                   [oStack.sImageInfo.RowsPerStrip] = deal(nRowsPerStrip);
+               if ~isfield(sInfo, 'RowsPerStrip') || (nRowsPerStrip ~= sInfo(1).RowsPerStrip)
+                   [sInfo.RowsPerStrip] = deal(nRowsPerStrip);
                end
+               
+               % - Attempt to read tile width and length
+               try
+                  [sInfo.TileWidth] = deal(TiffgetTag(oStack.TIF, 'TileWidth'));
+               catch
+                  [sInfo.TileWidth] = deal(1);
+               end
+               
+               try
+                  [sInfo.TileLength] = deal(TiffgetTag(oStack.TIF, 'TileLength'));
+               catch
+                  [sInfo.TileLength] = deal(1);
+               end
+               
+               % - Read max and min sample values
+               [sInfo.MaxSampleValue] = deal(TiffgetTag(oStack.TIF, 'MaxSampleValue'));
+               [sInfo.MinSampleValue] = deal(TiffgetTag(oStack.TIF, 'MinSampleValue'));
                
             else
                % - Read TIFF header for tiffread31
-               [oStack.TIF, oStack.HEADER] = tiffread31_header(strFilename);
+               % [oStack.TIF, oStack.HEADER] = tiffread31_header(strFilename);
+               oStack.TIF.file = fopen(strFilename, 'r', 'l');
 
-               % - Use tiffread29 to get the data class for this tiff
+               % - Use tiffread31 to get the data class for this tiff
                fPixel = tiffread31_readimage(oStack.TIF, oStack.HEADER, 1);
                fPixel = fPixel(1, 1, :);
                oStack.strDataClass = class(fPixel);
@@ -396,7 +425,22 @@ classdef TIFFStack < handle
             oStack.fhCastFun = str2func(oStack.strDataClass);
             
             % - Record stack size
-            oStack.vnDataSize = [sInfo(1).Height sInfo(1).Width numel(sInfo) sInfo(1).SamplesPerPixel];
+            if (oStack.bMTStack)
+               oStack.vnDataSize = vnStackDims;
+               oStack.vnApparentSize = oStack.vnDataSize;
+               
+               % - Initialise dimension order
+               oStack.vnDimensionOrder = 1:numel(oStack.vnApparentSize);
+            
+               % - Permute first two dimensions
+               oStack = permute(oStack, [2 1 3:numel(vnStackDims)]);
+               
+            else
+               oStack.vnDataSize = [sInfo(1).Height sInfo(1).Width numel(sInfo) sInfo(1).SamplesPerPixel];
+
+               % - Initialise dimension order
+               oStack.vnDimensionOrder = 1:numel(oStack.vnDataSize);
+            end
             
             % - Initialize apparent stack size, de-interleaving along the frame dimension
             if isempty(vnInterleavedFrameDims)
@@ -409,6 +453,7 @@ classdef TIFFStack < handle
                   % - Work out number of apparent frames
                   nNumApparentFrames = oStack.vnDataSize(3) ./ prod(vnInterleavedFrameDims);
                   oStack.vnApparentSize = [oStack.vnDataSize(1:2) vnInterleavedFrameDims(:)' nNumApparentFrames oStack.vnDataSize(4)];
+                  oStack.vnDimensionOrder = 1:numel(oStack.vnApparentSize);
                   
                else
                   % - Incorrect total number of deinterleaved frames
@@ -419,16 +464,17 @@ classdef TIFFStack < handle
             else
                % - Record apparent stack dimensions
                oStack.vnApparentSize = [oStack.vnDataSize(1:2) vnInterleavedFrameDims(:)' oStack.vnDataSize(4)];
+               oStack.vnDimensionOrder = 1:numel(oStack.vnApparentSize);
             end
             
-            % - Initialise dimension order
-            oStack.vnDimensionOrder = 1:numel(oStack.vnApparentSize);
-            
             % - Fix up dimensions order for ImageJ HyperStack
-            if (bIsImageJHyperStack)
+            if (bImageJDeinterleaving)
                oStack = permute(oStack, [1 2 5 4 3]);
             end
 
+            % - Record image information
+            oStack.sImageInfo = sInfo;
+            
          catch mErr
             base_ME = MException('TIFFStack:InvalidFile', ...
                   '*** TIFFStack: Could not open file [%s].', strFilename);
@@ -444,12 +490,11 @@ classdef TIFFStack < handle
             if (~isempty(oStack.TIF))
                tifflib('close', oStack.TIF);
             end
-
-         else
-            % - Close the TIFF file, if opened by tiffread29_header
-            if (isfield(oStack.TIF, 'file'))
-               fclose(oStack.TIF.file);
-            end
+         end
+         
+         % - Close the TIFF file, if opened by tiffread31_header
+         if (isfield(oStack.TIF_tr31, 'file') && ~isempty(fopen(oStack.TIF_tr31.file)))
+            fclose(oStack.TIF_tr31.file);
          end
       end
 
@@ -461,11 +506,18 @@ classdef TIFFStack < handle
          fprintf('   vnApparentSize: ['); fprintf('%d ', oStack.vnApparentSize); fprintf(']\n');
          fprintf('   vnDimensionOrder: ['); fprintf('%d ', oStack.vnDimensionOrder); fprintf(']\n');
          fprintf('   bUseTiffLib: %d\n', oStack.bUseTiffLib);
+         fprintf('   bMTStack: %d\n', oStack.bMTStack);
          fprintf('   fhReadFun: %s\n', func2str(oStack.fhReadFun));
          fprintf('   fhSetDirFun: %s\n', func2str(oStack.fhSetDirFun));
          fprintf('   fhRepSum: %s\n', func2str(oStack.fhRepSum));
          fprintf('   fhCastFun: %s\n', func2str(oStack.fhCastFun));
       end
+      
+      function [TIF, HEADER] = diagnostic_HEADER(oStack)
+         TIF = oStack.TIF;
+         HEADER = oStack.HEADER;
+      end
+         
 
 %% --- Overloaded subsref
 
@@ -622,7 +674,7 @@ classdef TIFFStack < handle
                      end
                      
                      % - Construct referencing subscripts for raw stack
-                     S.subs = [S.subs(1:2) reshape(vnFrameIndices, 1, []) S.subs(end)];
+                     S.subs = [S.subs(1:2) reshape(vnFrameIndices, [], 1) S.subs(end)];
                   end
                end
 
@@ -668,6 +720,27 @@ classdef TIFFStack < handle
          sImageInfo = oStack.sImageInfo;
       end
       
+      function vsTags = getImageTags(oStack, vnFrames)
+         % getImageTags - METHOD Read TIFF tags for individual frames
+         %
+         % Usage: vsTags = getImageTags(oStack, vnFrames)
+         %
+         % 'oStack' is a TIFFStack object. 'vnFrames' is a vector of frame
+         % indices into the stack.
+         %
+         % 'vsTags' will be a struct array, with each element of the array
+         % containing all tags for the corresponding frame index in
+         % 'vnFrames'.
+         
+         if (nargin < 2)
+            help TIFFStack/getImageTags;
+            error('TIFFStack:Usage', 'TIFFStack/getImageTags: ''vnFrames'' is a required argument.');
+         end
+         
+         % - Extract tags for these frames
+         vsTags = tiffread31_readtags(oStack.TIF_tr31, oStack.HEADER, vnFrames);
+      end
+      
       function bInvert = getInvert(oStack)
          bInvert = oStack.bInvert;
       end
@@ -684,16 +757,16 @@ classdef TIFFStack < handle
       % size - METHOD Overloaded size function
       function [varargout] = size(oStack, vnDimensions)
          % - Get original tensor size, and extend dimensions if necessary
-         vnApparentSize = oStack.vnApparentSize; %#ok<PROP>
-         vnApparentSize(end+1:numel(oStack.vnDimensionOrder)) = 1; %#ok<PROP>
+         vnApparentSize = oStack.vnApparentSize; %#ok<PROPLC,PROP>
+         vnApparentSize(end+1:numel(oStack.vnDimensionOrder)) = 1; %#ok<PROPLC,PROP>
          
          % - Return the size of the tensor data element, permuted
-         vnSize = vnApparentSize(oStack.vnDimensionOrder); %#ok<PROP>
+         vnSize = vnApparentSize(oStack.vnDimensionOrder); %#ok<PROPLC,PROP>
          
          % - Trim trailing unitary dimensions
          vbIsUnitary = vnSize == 1;
          if (vbIsUnitary(end))
-            nLastNonUnitary = numel(vnSize) - find(fliplr(vnSize) == 1, 1, 'last');
+            nLastNonUnitary = find(~vbIsUnitary, 1, 'last');
             if (nLastNonUnitary < numel(vnSize))
                vnSize = vnSize(1:nLastNonUnitary);
             end
@@ -933,7 +1006,7 @@ classdef TIFFStack < handle
          end
          
          % - Construct a casting function
-         fhCastFun = str2func(strClass); %#ok<PROP>
+         fhCastFun = str2func(strClass); %#ok<PROPLC,PROP>
          
          % - Set up referencing
          sSubs.type = '()';
@@ -943,7 +1016,7 @@ classdef TIFFStack < handle
          tfStack = subsref(oStack, sSubs);
          
          % - Cast the result
-         tfStack = fhCastFun(tfStack); %#ok<PROP>
+         tfStack = fhCastFun(tfStack); %#ok<PROPLC,PROP>
       end
 
       function tfStack = double(oStack)
@@ -1052,13 +1125,12 @@ classdef TIFFStack < handle
          oStack.vnApparentSize = sSavedVar.vnApparentSize;
          oStack.vnDimensionOrder = sSavedVar.vnDimensionOrder;
       end
-
    end
 end
 
 %% --- Helper functions ---
 
-% TS_read_data_tiffread - FUNCTION Read the requested pixels from the TIFF file (using tiffread29)
+% TS_read_data_tiffread - FUNCTION Read the requested pixels from the TIFF file (using tiffread31)
 %
 % Usage: [tfData] = TS_read_data_imread(oStack, cIndices)
 %
@@ -1170,9 +1242,9 @@ function [tfData] = TS_read_data_Tiff(oStack, cIndices, bLinearIndexing)
    % - Get referencing parameters for TIF object
    w = oStack.vnDataSize(2);
    h = oStack.vnDataSize(1);
-   rps = min(oStack.sImageInfo(1).RowsPerStrip, h);
-   tw = min(oStack.sImageInfo(1).TileWidth, w);
-   th = min(oStack.sImageInfo(1).TileLength, h);
+   vfrps = cellfun(@(rps)nanemptymin(rps, h), {oStack.sImageInfo(cIndices{3}).RowsPerStrip});
+   vftw = cellfun(@(tw)nanemptymin(tw, w), {oStack.sImageInfo(cIndices{3}).TileWidth});
+   vfth = cellfun(@(tw)nanemptymin(tw, h), {oStack.sImageInfo(cIndices{3}).TileLength});
    spp = oStack.sImageInfo(1).SamplesPerPixel;
    
    tlStack = oStack.TIF;
@@ -1200,7 +1272,7 @@ function [tfData] = TS_read_data_Tiff(oStack, cIndices, bLinearIndexing)
             oStack.fhSetDirFun(tlStack, cIndices{3}(nImage));
             
             % - Read data from this image, overwriting frame buffer
-            [~, tfImage] = oStack.fhReadFun(tfImage, tlStack, spp, w, h, rps, tw, th, []);
+            [~, tfImage] = oStack.fhReadFun(tfImage, tlStack, spp, w, h, vfrps(nImage), vftw(nImage), vfth(nImage), []);
             
             % - Resample frame, if required
             if (bResample)
@@ -1235,15 +1307,16 @@ function [tfData] = TS_read_data_Tiff(oStack, cIndices, bLinearIndexing)
       
       % - Loop over images in stack and extract required frames
       try
-         for (nImage = unique(cIndices{3}(:))')
+         vnUniqueImages = unique(cIndices{3}(:))';
+         for (nImage = 1:numel(vnUniqueImages))
             % - Find corresponding pixels
-            vbThesePixels = cIndices{3} == nImage;
+            vbThesePixels = cIndices{3} == vnUniqueImages(nImage);
             
             % - Skip to this image in stack
-            oStack.fhSetDirFun(tlStack, nImage);
+            oStack.fhSetDirFun(tlStack, vnUniqueImages(nImage));
 
             % - Read the subsampled pixels from the stack
-            [tfData(vbThesePixels), tfImage] = oStack.fhReadFun(tfImage, tlStack, spp, w, h, rps, tw, th, vnFrameLinearIndices(vbThesePixels));
+            [tfData(vbThesePixels), tfImage] = oStack.fhReadFun(tfImage, tlStack, spp, w, h, vfrps(nImage), vftw(nImage), vfth(nImage), vnFrameLinearIndices(vbThesePixels));
          end
          
       catch mErr
@@ -1419,6 +1492,56 @@ function isvalidsubscript(oRefs)
    end
 end
 
+%% get_full_file_path - FUNCTION Calculate the absolute path to a given (possibly relative) filename
+%
+% Usage: strFullPath = get_full_file_path(strFile)
+%
+% 'strFile' is a filename, which may include relative path elements.  The file
+% does not have to exist.
+%
+% 'strFullPath' will be the absolute path to the file indicated in 'strFile'.
+
+function strFullPath = get_full_file_path(strFile)
+
+   try
+      fid = fopen(strFile);
+      strFile = fopen(fid);
+      fclose(fid);
+      
+      [strDir, strName, strExt] = fileparts(strFile);
+      
+      if (isempty(strDir))
+         strDir = '.';
+         strFullDirPath = cd(cd(strDir));
+         strFullPath = fullfile(strFullDirPath, [strName strExt]);
+      else
+         strFullPath = strFile;
+      end
+      
+   catch mErr
+      % - Close file id, if necessary
+      if (ismember(fid, fopen('all')))
+         fclose(fid);
+      end
+      
+      % - Record error state
+      base_ME = MException('TIFFStack:ReadError', ...
+         '*** TIFFStack: Could not open file [%s].', strFile);
+      new_ME = addCause(base_ME, mErr);
+      throw(new_ME);
+   end
+end
+
+% iscolon - FUNCTION Test whether a reference is equal to ':'
+function bIsColon = iscolon(ref)
+   bIsColon = ischar(ref) && isequal(ref, ':');
+end
+
+% nanemptymin - FUNCTION Test for a min or nan or empty
+function fVal = nanemptymin(fVal, fTestVal)
+   fVal(isempty(fVal)) = fTestVal;
+   fVal(isnan(fVal)) = fTestVal;
+end
 
 %% Accelerated Libtiff reading functions
 
@@ -1630,68 +1753,23 @@ function tagValue = TiffgetTag(oTiff,tagId)
 end
 
 
-% get_full_file_path - FUNCTION Calculate the absolute path to a given (possibly relative) filename
-%
-% Usage: strFullPath = get_full_file_path(strFile)
-%
-% 'strFile' is a filename, which may include relative path elements.  The file
-% does not have to exist.
-%
-% 'strFullPath' will be the absolute path to the file indicated in 'strFile'.
-
-function strFullPath = get_full_file_path(strFile)
-
-   try
-      fid = fopen(strFile);
-      strFile = fopen(fid);
-      fclose(fid);
-      
-      [strDir, strName, strExt] = fileparts(strFile);
-      
-      if (isempty(strDir))
-         strDir = '.';
-         strFullDirPath = cd(cd(strDir));
-         strFullPath = fullfile(strFullDirPath, [strName strExt]);
-      else
-         strFullPath = strFile;
-      end
-      
-   catch mErr
-      % - Close file id, if necessary
-      if (ismember(fid, fopen('all')))
-         fclose(fid);
-      end
-      
-      % - Record error state
-      base_ME = MException('TIFFStack:ReadError', ...
-         '*** TIFFStack: Could not open file [%s].', strFile);
-      new_ME = addCause(base_ME, mErr);
-      throw(new_ME);
-   end
-end
-
-% iscolon - FUNCTION Test whether a reference is equal to ':'
-function bIsColon = iscolon(ref)
-   bIsColon = ischar(ref) && isequal(ref, ':');
-end
-
 %% -- MEX-handling functions
 
 function [hRepSumFunc] = GetMexFunctionHandles
    % - Does the compiled MEX function exist?
    if (exist('mapped_tensor_repsum') ~= 3) %#ok<EXIST>
-      try %#ok<TRYNC>
-         % - Move to the MappedTensor private directory
-         strMTDir = fileparts(which('TIFFStack'));
-         strCWD = cd(fullfile(strMTDir, 'private'));
+      % - Move to the MappedTensor private directory
+      strMTDir = fileparts(which('TIFFStack'));
+      strCWD = cd(fullfile(strMTDir, 'private'));
          
+      try %#ok<TRYNC>
          % - Try to compile the MEX functions
          disp('--- TIFFStack: Compiling MEX functions.');
          mex('mapped_tensor_repsum.c', '-largeArrayDims', '-O');
-         
-         % - Move back to previous working directory
-         cd(strCWD);
       end
+      
+      % - Move back to previous working directory
+      cd(strCWD);
    end
    
    % - Did we succeed?
@@ -1709,7 +1787,7 @@ end
 
 %% -- ImageJ helper functions
 
-function [bIsImageJBigStack, bIsImageJHyperStack, vnStackDims, vnInterleavedFrameDims] = IsImageJBigStack(sInfo)
+function [bIsImageJBigStack, bIsImageJHyperStack, vnStackDims, vnInterleavedFrameDims] = IsImageJBigStack(sInfo, nAparrentSize)
 
    % - Set up default return arguments
    bIsImageJBigStack = false;
@@ -1733,7 +1811,7 @@ function [bIsImageJBigStack, bIsImageJHyperStack, vnStackDims, vnInterleavedFram
       nNumImages = sscanf(strImageDesc(strfind(strImageDesc, 'images='):end), 'images=%d');
       
       % - Does ImageJ report a greater number of images than sInfo?
-      if (~isempty(nNumImages) && (numel(sInfo) ~= nNumImages))
+      if (~isempty(nNumImages) && (nAparrentSize ~= nNumImages))
          bIsImageJBigStack = true;
       end
       
@@ -1748,13 +1826,25 @@ function [bIsImageJBigStack, bIsImageJHyperStack, vnStackDims, vnInterleavedFram
          nNumSlices = sscanf(strImageDesc(strfind(strImageDesc, 'slices='):end), 'slices=%d');
          nNumFrames = sscanf(strImageDesc(strfind(strImageDesc, 'frames='):end), 'frames=%d');
          
+         if (isempty(nNumChannels))
+            nNumChannels = 1;
+         end
+         
+         if (isempty(nNumSlices))
+            nNumSlices = 1;
+         end
+         
+         if (isempty(nNumFrames))
+            nNumFrames = 1;
+         end
+         
          % - Deinterleave stack
-         vnStackDims = [sInfo(1).Height sInfo(1).Width nNumFrames*nNumSlices*nNumChannels 1];
+         vnStackDims = [sInfo(1).Width sInfo(1).Height nNumFrames*nNumSlices*nNumChannels 1];
          vnInterleavedFrameDims = [nNumChannels nNumSlices nNumFrames];
          
       else
          % - Extract information about the stack size for a fake big stack
-         vnStackDims = [sInfo(1).Height sInfo(1).Width nNumImages sInfo(1).SamplesPerPixel];
+         vnStackDims = [sInfo(1).Width sInfo(1).Height nNumImages sInfo(1).SamplesPerPixel];
          vnInterleavedFrameDims = [];
       end
    end
