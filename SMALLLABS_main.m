@@ -1,5 +1,10 @@
 function SMALLLABS_main(directoryname,dfrlmsz,avgwin,moloffwin,varargin)
 %% SMALLLABS_main
+%
+%%%% If you obtained this code from anywhere other than the Biteen Lab
+%%%% GitHub please visit https://github.com/BiteenMatlab/SMALL-LABS to
+%%%% obtain the most up-to-date version of this code.
+%
 % SMALLLABS_main is the wrapper function to do real background substraction of
 % single molecule imaging movies so that the molecules can be fit and their
 % intensity accurately measured using the SMALL-LABS algorithm.
