@@ -1,4 +1,4 @@
-function guesses=Guessing(mov_fname,dfrlmsz,bpthrsh,egdesz,pctile_frame,debugmode,mask_fname)
+function guesses=Guessing(mov_fname,dfrlmsz,bpthrsh,egdesz,pctile_frame,debugmode,mask_fname,make_guessmovie)
 %% Guessing
 % make a list of guesses for sinlge molecules. Using a bandpass filter to
 % filter pixel noise first, then uses bwpropfilt to find blobs of the
@@ -27,10 +27,11 @@ function guesses=Guessing(mov_fname,dfrlmsz,bpthrsh,egdesz,pctile_frame,debugmod
 % the guesses. Default is 0
 %
 % mask_fname is the filename of a mask to use for guessing. If no mask is
-% being used just leave it empty. The mask is a .mat file which has a
-% logical array (or at least where nonzero entries will be converted to
-% 1s) called PhaseMask that is the same size as a frame in the current
-% movie.
+% being used just leave it empty. If mask_fname is set 1, then the program
+% will look for a file in the same directory as the movie with '_PhaseMask'
+% appened to the name of the movie. The mask is a .mat file which has a
+% logical array (or at least where nonzero entries will be converted to 1s)
+% called PhaseMask that is the same size as a frame in the current movie.
 %
 %%%% Outputs %%%%
 % guesses is an array with columns 1. frame #, 2. row #, 3. column # of the
@@ -75,17 +76,24 @@ tic;%for measuring the time to run the entire program
 %% Peak Guessing
 tfstk=TIFFStack(mov_fname);
 movsz=size(tfstk);%the size of the movie
-[~,fname] = fileparts(mov_fname);
+[pathstr,fname] = fileparts(mov_fname);
 
 %intializing the guess indices cell array
 guesses=zeros(1,3);
 
+%making the phasemask logical map
 if ~isempty(mask_fname)
-    load(mask_fname,'PhaseMask')
+    if mask_fname
+        %the strrep is to get rid of the avgsub, note that this shouldn't
+        %do anything if bgsub=0
+        load([pathstr,filesep,strrep(fname,'_avgsub',[]),'_PhaseMask'],'PhaseMask')
+    else
+        load(mask_fname,'PhaseMask')
+    end
     PhaseMask(PhaseMask~=0)=1;
     PhaseMask=logical(PhaseMask);
 else
-    PhaseMask=logical(ones(movsz([1,2])));
+    PhaseMask=true(movsz([1,2]));
 end
 
 %using the percentiles on the entire movie
@@ -112,6 +120,13 @@ if ~pctile_frame
     %percentile of the brightnesses for nonzero pixels
     bimgmov=logical(bimgmov.*(bimgmov>prctile(bimgmov(bimgmov>0 & ...
         repmat(PhaseMask,[1,1,movsz(3)])),bpthrsh)).*repmat(PhaseMask,[1,1,movsz(3)]));
+end
+
+if make_guessmovie
+    v = VideoWriter([pathstr,filesep,fname,'_Guesses.avi'],'Uncompressed AVI');
+    open(v);
+    
+    disp(['Making guesses movie for ',fname]);
 end
 
 h1=waitbar(0);
@@ -153,7 +168,7 @@ for ll=1:movsz(3)
         guesses=cat(1,guesses,[repmat(ll,size(centroids(:,2))),round(centroids(:,2)),round(centroids(:,1))]);
     end
     
-    if debugmode %plot the guesses, for checking parameters
+    if debugmode || make_guessmovie %plot the guesses, for checking parameters
         if ~pctile_frame
             curfrm=double(tfstk(:,:,ll));
         end
@@ -163,17 +178,27 @@ for ll=1:movsz(3)
             vcs=viscircles([centroids(:,1),centroids(:,2)],repmat(dfrlmsz,[length(centroids(:,2)),1]));
             set(vcs.Children,'LineWidth',1)
         end
-        title([fname,'   frame ',num2str(ll)],'Interpreter','none')
-        
-        keyboard
+        if debugmode
+            title([fname,'   frame ',num2str(ll)],'Interpreter','none')
+            keyboard
+        elseif make_guessmovie
+            frame = getframe;
+            writeVideo(v,frame);
+        end
     end
 end
 guesses=guesses(2:end,:);%get rid of first row of zeros
 
+if make_guessmovie
+    close(v)
+    keyboard
+end
+
 tictoc=toc;%the time to run the entire program
 
 [pathstr,name,~] = fileparts(mov_fname);
-save([pathstr,filesep,name,'_guesses.mat'],'guesses','dfrlmsz','egdesz','pctile_frame','bpthrsh','movsz','tictoc');
+save([pathstr,filesep,name,'_guesses.mat'],'guesses','dfrlmsz','egdesz','pctile_frame','bpthrsh',...
+    'movsz','tictoc','mask_fname');
 
 try
     close(h1)%closing the waitbar

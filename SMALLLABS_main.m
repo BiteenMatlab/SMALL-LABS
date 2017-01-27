@@ -117,8 +117,11 @@ params.bpthrsh = 95;
 params.egdesz = dfrlmsz;
 % compare brightnesses in each frame? otherwise use entire movie
 params.pctile_frame = 0;
-% use a mask for guessing? What is it's filename?
+% use a mask for guessing? What is it's filename? Set to 1 to look for .mat
+% file w/ '_PhaseMask' appended to movie name
 params.mask_fname=[];
+% make a movie (.avi) of the guesses to check parameters
+params.make_guessmovie = 0;
 
 %%% Fitting parameters %%%
 % do MLE fitting? If not least squares fitting will be used
@@ -206,7 +209,7 @@ end
 
 %Select movies with uigetfile. If you make an error in specifying the
 %directory, it opens in the current directory.
-display('Select the movie(s)')
+disp('Select the movie(s)')
 try
     [datalist,dataloc,findex]=uigetfile([directoryname filesep '*.tif*'],'multiselect','on');
 catch
@@ -232,7 +235,7 @@ for ii=1:numel(datalist); datalist{ii}=[dataloc datalist{ii}]; end
 % moviename_avgsub_info.txt
 if params.makeGuesses && params.bgsub
     bFiles=dir([dataloc,'*_avgsub.tif']);%list all the avgsub tif stacks
-    for ii=1:numel(dlocs);
+    for ii=1:numel(dlocs)
         %compare the chosen files with the avgsub list and choose ones
         %without an avgsub movie
         if ~any(ismember({bFiles.name},[dnames{ii},'_avgsub.tif']))&&...
@@ -249,13 +252,15 @@ end
 % loop through each movie and make the guesses, which will be saved in a
 % .mat file called moviename_guesses.mat
 if params.makeGuesses
-    for ii=1:numel(dlocs);
+    for ii=1:numel(dlocs)
         if params.bgsub
             Guessing([dlocs{ii},filesep,dnames{ii},'_avgsub.tif'],dfrlmsz,...
-                params.bpthrsh,params.egdesz,params.pctile_frame,params.check_guesses,params.mask_fname);
+                params.bpthrsh,params.egdesz,params.pctile_frame,params.check_guesses,...
+                params.mask_fname,params.make_guessmovie);
         else
             Guessing([dlocs{ii},filesep,dnames{ii},'.tif'],dfrlmsz,...
-                params.bpthrsh,params.egdesz,params.pctile_frame,params.check_guesses,params.mask_fname);
+                params.bpthrsh,params.egdesz,params.pctile_frame,params.check_guesses,...
+                params.mask_fname,params.make_guessmovie);
         end
     end
 end
@@ -264,7 +269,7 @@ end
 % loop through all of the movies and using the guesses .mat file will write
 % the off frames list to a .mat file, called guessesname_Mol_off_frames.mat
 if params.makeOffFrames && params.bgsub
-    for ii=1:numel(dlocs);
+    for ii=1:numel(dlocs)
         Mol_off_frames([dlocs{ii},filesep,dnames{ii},'_avgsub_guesses.mat'],dfrlmsz,moloffwin);
     end
 end
@@ -277,7 +282,7 @@ end
 % moviename_AccBGSUB_fits.mat, otherwise if not doing bgsub, it's called
 % moviename_fits.mat.
 if params.fitting
-    for ii=1:numel(dlocs);
+    for ii=1:numel(dlocs)
         if params.bgsub
             Subtract_then_fit([dlocs{ii},filesep,dnames{ii},'.tif'],...
                 [dlocs{ii},filesep,dnames{ii},'_avgsub_guesses_Mol_off_frames.mat'],...
@@ -297,7 +302,7 @@ end
 % indicates if the fit passed was successfully tracked and wasn't the first
 % or last frame in a track
 if params.tracking
-    for ii=1:numel(dlocs);
+    for ii=1:numel(dlocs)
         if params.bgsub
             Track_filter([dlocs{ii},filesep,dnames{ii},'_AccBGSUB_fits.mat'],1,params.trackparams,params.savetracks);
         else
@@ -311,7 +316,7 @@ end
 % mode, to look at the results. Outpits an avi file called
 % moviename_ViewFits.avi
 if params.makeViewFits
-    for ii=1:numel(dlocs);
+    for ii=1:numel(dlocs)
         if params.bgsub
             if params.orig_movie
                 VF_fname=[dlocs{ii},filesep,dnames{ii},'.tif'];
