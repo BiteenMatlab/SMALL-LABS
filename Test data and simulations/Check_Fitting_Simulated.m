@@ -3,13 +3,13 @@
 % The only section you should have to change anything
 %Filename assuming that you're using the defualt filenames in SMALL-LABS
 %The directory where the data is (with a \ at the end)
-directory_name='C:\Users\isaacoff\Documents\SMALL-LABS\Test data and simulations\SMLMS Challenge\';
+directory_name='C:\Users\isaacoff\Documents\SMALL-LABS\Test data and simulations\';
 
 %the name of the movie
-namebase='sequence-as-stack-MT0.N1.LD-2D-Exp';
+namebase='SimData_wGNRs';
 
 %background subtraction?
-bgsub=0;
+bgsub=1;
 
 %This lets you click through the frames to see the individual fits
 viewfits_bool=0;
@@ -126,22 +126,22 @@ disp(['Guess Jaccard Index = ',num2str(jaccard)])
 disp(['Guess false positive rate = ',num2str(fp)])
 disp(['Guess false negative rate = ',num2str(fn)])
 
-break %debugging
+% break %debugging
 
 % end
 %% Intensity comparisons
 
-intsct=size(find(corgess & fits(:,9)==1),1);
+intsct=size(find(corgess & fits.goodfit),1);
 
-jaccard=intsct/(size(find(fits(:,9)==1),1)+size(sim_mols,1)-intsct);
-fp=(size(find(fits(:,9)==1),1)-intsct)/(size(find(fits(:,9)==1),1));
+jaccard=intsct/(size(find(fits.goodfit),1)+size(sim_mols,1)-intsct);
+fp=(size(find(fits.goodfit),1)-intsct)/(size(find(fits.goodfit),1));
 fn=(size(sim_mols,1)-intsct)/size(sim_mols,1);
 
 disp(['Fit Jaccard Index = ',num2str(jaccard)])
 disp(['Fit false positive rate = ',num2str(fp)])
 disp(['Fit false negative rate = ',num2str(fn)])
 
-break %debugging
+% break %debugging
 
 %cohort statistics
 if cohort_stats
@@ -204,8 +204,11 @@ if indv_cmprs
     % 1. x (px), 2. y (px), 3. width (px) ,4. offset,
     % 5. amplitude, 6. integral (sum) of Gaussian
     
-    sim_gdfts=sim_mols(sim2gess(corgess & fits(:,9)==1),2:7);
-    cor_gdfts=fits(corgess & fits(:,9)==1,[2:6,8]);
+    sim_gdfts=sim_mols(sim2gess(corgess & fits.goodfit),2:7);
+%     [2:6,8]
+    cor_gdfts=[fits.row(corgess & fits.goodfit),fits.col(corgess & fits.goodfit),...
+        fits.widthr(corgess & fits.goodfit),fits.offset(corgess & fits.goodfit),...
+        fits.amp(corgess & fits.goodfit),fits.sum(corgess & fits.goodfit)];
     
     dif=cor_gdfts-sim_gdfts;
     
