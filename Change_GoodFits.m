@@ -58,11 +58,11 @@ for ii=1:numel(dlocs);
     gesss=dfrlmsz/dfD2std;
     
     %%% make the new goodfits vector %%%
-    goodfits=(fits(:,4)<=(stdtol*gesss) & fits(:,4)>=(gesss/stdtol)) & ...
-        all(fits(:,[2,3,6,8])>=0,2) & fits(:,6)<fits(:,8) & fits(:,7)<maxerr;
+    goodfits=(mean([fits.widthc,fits.widthr],2)<=(stdtol*gesss) & mean([fits.widthc,fits.widthr],2)>=(gesss/stdtol)) & ...
+        all([fits.row,fits.col,fits.amp,fits.sum]>=0,2) & fits.amp<fits.sum & fits.err<maxerr;
     
     %update the fits array
-    fits(:,9)=goodfits;
+    fits.goodfit=goodfits;
     %save it
     save(fits_fname,'fits','stdtol','maxerr','dfrlmsz','-append')%append the new vector and the used parameters
 end
