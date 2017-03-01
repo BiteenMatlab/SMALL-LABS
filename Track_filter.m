@@ -45,29 +45,33 @@ if nargin<3
 end
 
 %% Track it
+load(fits_fname,'fits')
+
+%the logical vector of whether or not the fit passed the tracking filtering
+trk_filt=false(size(fits.frame,1),1);
+
 [~,fname] = fileparts(fits_fname);
 disp(['Tracking ',fname]);
 
 tracks = Tracking(fits_fname,trackparams,savetracks);
-
-load(fits_fname,'fits')
-
-%the logical vector of whether or not the fit passed the tracking filtering
-trk_filt=zeros(size(fits,1),1);
-
-% remove the first and last entries of each track
-for ii=1:max(tracks(:,4))    
-    %the molecules in the current track
-    mols_inds=find(tracks(:,4)==ii);
-    %remove the first and last entries  
-    tracks(mols_inds([1,end]),:)=[];
+if ~isempty(tracks)
+    save(fits_fname,'tracks','-append')
+    
+    % remove the first and last entries of each track
+    for ii=1:max(tracks(:,4))
+        %the molecules in the current track
+        mols_inds=find(tracks(:,4)==ii);
+        %remove the first and last entries
+        tracks(mols_inds([1,end]),:)=[];
+    end
+    % trk_filt(ismember(fits(:,1:3),tracks(:,1:3),'rows'))=1;
+    trk_filt(ismember([fits.frame,fits.row,fits.col],tracks(:,1:3),'rows'))=1;
+else
+    trk_filt=false(size(fits.frame,1),1);
 end
-trk_filt(ismember(fits(:,1:3),tracks(:,1:3),'rows'))=1;
-%convert to a logical
-trk_filt=logical(trk_filt);
 
 if append_vec
-    save(fits_fname,'trk_filt','tracks','-append')
+    save(fits_fname,'trk_filt','-append')
 end
 
 end

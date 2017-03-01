@@ -33,6 +33,8 @@ function guesses=Guessing(mov_fname,dfrlmsz,bpthrsh,egdesz,pctile_frame,debugmod
 % logical array (or at least where nonzero entries will be converted to 1s)
 % called PhaseMask that is the same size as a frame in the current movie.
 %
+% make_guessmovie
+%
 %%%% Outputs %%%%
 % guesses is an array with columns 1. frame #, 2. row #, 3. column # of the
 % guesses

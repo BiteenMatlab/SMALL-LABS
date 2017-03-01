@@ -41,14 +41,12 @@ alpha=-log(trackparams(1))/trackparams(4);
 
 load(fits_fname,'fits')
 
-%filling the goodfitfits for the tracking function array
-gdfts=fits(fits(:,9)==1,:);%goodfits
-goodfits=zeros(size(gdfts,1),23);
-
-goodfits(:,1)=gdfts(:,1);%frame number
-goodfits(:,9)=gdfts(:,2);%x position
-goodfits(:,11)=gdfts(:,3);%y position
-goodfits(:,14)=gdfts(:,8);%intensity
+%filling the goodfit for the tracking function array
+goodfits=zeros(sum(fits.goodfit),23);
+goodfits(:,1)=fits.frame(fits.goodfit);%frame number
+goodfits(:,9)=fits.row(fits.goodfit);%x position
+goodfits(:,11)=fits.col(fits.goodfit);%y position
+goodfits(:,14)=fits.sum(fits.goodfit);%intensity
 
 trfile=Track_3D2(goodfits,trackparams(1),alpha,trackparams(3),trackparams(5),trackparams(6),...
     1,trackparams(7),trackparams(2));
@@ -57,9 +55,14 @@ if savetracks
     save([fits_fname,'_tracks'],'trfile','trackparams')
 end
 
-%get rid of useless fits from the tracking program
-% tracks is made of 1: frame #, 2: x (px), 3: y (px), 4: track #
-tracks=trfile(:,[2,4,5,1]);
+if ~isempty(trfile)
+    %get rid of useless fits from the tracking program
+    % tracks is made of 1: frame #, 2: x (px), 3: y (px), 4: track #
+    tracks=trfile(:,[2,4,5,1]);
+else
+    warning('Not enough goodfits to contruct tracks')
+    tracks=[];
+end
 
 end
 

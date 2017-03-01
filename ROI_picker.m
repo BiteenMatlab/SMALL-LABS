@@ -22,6 +22,12 @@ function ROI_picker( directoryname,mov_prd,prct_frms,append_str)
 %
 % the function will also write a .txt file called filename_ROI_info.txt
 % with the ROI coordinates.
+%
+%%%% optional use to specify ROI %%%%
+% if you have the coordinates of the ROI that you want, you can input those
+% instead of going through the clicking process. The way to do this is to
+% input the coordinates in the place of mov_prd. The coordinates are input
+% as [ row # right side , col # top ; row # left side , col # bottom]
 
 
 %%%% Dependencies %%%%
@@ -75,12 +81,13 @@ if isscalar(mov_prd)
             close(figure(11))
             figure(11);
             imshow(movshow,prctile(movshow(:),[.1,99.8]))
-            htit=title(['The new ROI will be a box \newline First click on the upper right corner',...
-                '\newline Then click on the lower left corner']);
-            axpos = get(gca,'pos');
-            set(htit,'units','normalized');
-            extent = get(htit,'extent');
-            set(gca,'pos',[axpos(1) axpos(2) axpos(3) axpos(4)-0.66*extent(4)])
+            %this doesn't work with small frame sizes, need to fix this
+%             htit=title(['The new ROI will be a box \newline First click on the upper right corner',...
+%                 '\newline Then click on the lower left corner']);
+%             axpos = get(gca,'pos');
+%             set(htit,'units','normalized');
+%             extent = get(htit,'extent');
+%             set(gca,'pos',[axpos(1) axpos(2) axpos(3) axpos(4)-0.66*extent(4)])
             
             if ii>1 && firstthru
                 ROIclicks=ROIs{ii-1};

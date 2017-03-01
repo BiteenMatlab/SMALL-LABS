@@ -131,6 +131,9 @@ params.stdtol = 1.5;
 params.maxerr = 2; %if you change this please also change the if statement after the next loop
 % subtract the mean of off frames? If not use median
 params.do_avgsub = 1;
+% Which Gaussian function to fit to when using LSQ fitting? 1. symmetric,
+% 2. fixed angle asymmetric, 3. free angle asymmetric
+params.which_gaussian = 1;
 
 %%% Tracking parameters %%%
 % default is [0,0.01,200,1,3,3,1,0]
@@ -287,11 +290,13 @@ if params.fitting
             Subtract_then_fit([dlocs{ii},filesep,dnames{ii},'.tif'],...
                 [dlocs{ii},filesep,dnames{ii},'_avgsub_guesses_Mol_off_frames.mat'],...
                 [dlocs{ii},filesep,dnames{ii},'_avgsub_guesses.mat'],...
-                params.MLE_fit,params.egdesz,params.stdtol,params.maxerr);
+                params.MLE_fit,params.egdesz,params.stdtol,params.maxerr,...
+                params.do_avgsub,params.which_gaussian);
         else
             Subtract_then_fit([dlocs{ii},filesep,dnames{ii},'.tif'],'nobgsub',...
                 [dlocs{ii},filesep,dnames{ii},'_guesses.mat'],...
-                params.MLE_fit,params.egdesz,params.stdtol,params.maxerr);
+                params.MLE_fit,params.egdesz,params.stdtol,params.maxerr,...
+                params.do_avgsub,params.which_gaussian);
         end
     end
 end

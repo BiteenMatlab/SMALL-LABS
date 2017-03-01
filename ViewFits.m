@@ -61,26 +61,29 @@ for ii=1:movsz(3)
     imshow(curfrm,int_bounds)
     
     %which molecules appear in this frame
-    thisfrm_gf=fits(fits(:,1)==ii & fits(:,9)==1,:);%goodfits
-    thisfrm_bf=fits(fits(:,1)==ii & fits(:,9)==0,:);%badfits 
+    thisfrm_gf=[fits.row(fits.frame==ii & fits.goodfit),...
+        fits.col(fits.frame==ii & fits.goodfit)];    
+    thisfrm_bf=[fits.row(fits.frame==ii & ~fits.goodfit),...
+        fits.col(fits.frame==ii & ~fits.goodfit)];
     
     if exist('trk_filt','var')
-        thisfrm_trk=fits(fits(:,1)==ii & trk_filt,:);%on gnr
+        thisfrm_trk=[fits.row(fits.frame==ii & trk_filt),...
+        fits.col(fits.frame==ii & trk_filt)];
     else
         thisfrm_trk=[];
     end 
     
-    %note that for plotting row and column are switched...
+    %note that for viscircles row and column are switched...
     if ~isempty(thisfrm_gf)
-        vcs=viscircles([thisfrm_gf(:,3),thisfrm_gf(:,2)],repmat(circ_D,[length(thisfrm_gf(:,3)),1]));
+        vcs=viscircles([thisfrm_gf(:,2),thisfrm_gf(:,1)],repmat(circ_D,[length(thisfrm_gf(:,1)),1]));
         set(vcs.Children,'LineWidth',linewidth,'Color','green')
     end
     if ~isempty(thisfrm_bf)
-        vcs=viscircles([thisfrm_bf(:,3),thisfrm_bf(:,2)],repmat(circ_D,[length(thisfrm_bf(:,3)),1]));
+        vcs=viscircles([thisfrm_bf(:,2),thisfrm_bf(:,1)],repmat(circ_D,[length(thisfrm_bf(:,1)),1]));
         set(vcs.Children,'LineWidth',linewidth,'Color','red')
     end
     if ~isempty(thisfrm_trk)
-        vcs=viscircles([thisfrm_trk(:,3),thisfrm_trk(:,2)],repmat(circ_D+4,[length(thisfrm_trk(:,3)),1]));
+        vcs=viscircles([thisfrm_trk(:,2),thisfrm_trk(:,1)],repmat(circ_D+4,[length(thisfrm_trk(:,1)),1]));
         set(vcs.Children,'LineWidth',linewidth,'Color','magenta')
     end
     
@@ -92,7 +95,6 @@ for ii=1:movsz(3)
         keyboard
     end    
 end
-
 if write_mov
     close(v)
 end

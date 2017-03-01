@@ -43,6 +43,7 @@ function [fitPars, conf95, guesses, outPut]=gaussFit(img, varargin)
 %
 % MODIFICATION HISTORY:
 %       Written by David J. Rowland, The University of Michigan, 3/16.
+%       Updated by Bing Fu & Benjamin Isaacoff 2/17
 % NOTES:
 %       This code 'gaussFit.m' should be considered 'freeware'- and may be
 %       distributed freely in its original form when properly attributed.
@@ -73,10 +74,10 @@ params.frameNumber = 1;
 % fitting window width; should be odd valued
 params.nPixels = 11;
 
-% 3 is a symmetric gaussian (5 parameters) fit
+% 1 is a symmetric gaussian (5 parameters) fit
 % 2 is a fixed angle asymmetric gaussian fit
-% 1 is a 7 parameter asymmetric gaussian fit
-params.ffSwitch = 3;
+% 3 is a 7 parameter asymmetric gaussian fit
+params.ffSwitch = 1;
 
 fNames=fieldnames(params);
 
@@ -97,32 +98,49 @@ end
 %% fitting functions
 switch params.ffSwitch
     case 1
-        % freely rotating bivariate gaussian function for least squares minimization
-        % parameters: [xCenter, yCenter, angle, xSD, ySD, amplitude, offset]
-        xR=@(x,y,xc,yc,th)(x-xc)*cos(th)-(y-yc)*sin(th);
-        yR=@(x,y,xc,yc,th)(x-xc)*sin(th)+(y-yc)*cos(th);
-        fFun=@(p,X) exp( -xR(X(:,1), X(:,2), p(1), p(2), p(3)).^2/2/p(4)^2 + ...
-            -yR( X(:,1), X(:,2), p(1), p(2), p(3)).^2/2/p(5)^2 ) *p(6) + p(7);
+        % symmetric gaussian
+        % parameters: [xCenter, yCenter, SD, amplitude, offset]
+        fFun = @(p,X) exp( -((X(:,1)-p(1)).^2 + (X(:,2)-p(2)).^2)/2/p(3).^2) * p(4) + p(5);
         pStart = [];
-        lb = [];
-        ub = [];
+        lb=[-0.5*params.nPixels,-0.5*params.nPixels,0,min(img(:)),min(img(:))];
+        ub=[1.5*params.nPixels,1.5*params.nPixels,2*params.nPixels,2*range(img(:)),max(img(:))];
     case 2
         % fixed angle fit
         % parameters: [xCenter, yCenter, xSD, ySD, amplitude, offset]
-        th = 0;
-        xR = @(x,y,xc,yc)(x-xc)*cos(th)-(y-yc)*sin(th);
-        yR = @(x,y,xc,yc)(x-xc)*sin(th)+(y-yc)*cos(th);
-        fFun = @(p,X) exp( -xR(X(:,1), X(:,2), p(1), p(2)).^2/2/p(3)^2 + ...
-            -yR( X(:,1), X(:,2), p(1), p(2)).^2/2/p(4)^2 ) *p(5) + p(6);
+        %         th = 0;
+        %         xR = @(x,y,xc,yc)(x-xc)*cos(th)-(y-yc)*sin(th);
+        %         yR = @(x,y,xc,yc)(x-xc)*sin(th)+(y-yc)*cos(th);
+        %         fFun = @(p,X) exp( -xR(X(:,1), X(:,2), p(1), p(2)).^2/2/p(3)^2 + ...
+        %             -yR( X(:,1), X(:,2), p(1), p(2)).^2/2/p(4)^2 ) *p(5) + p(6);
+        
+        fFun = @(p,X) exp( -(X(:,1)-p(1)).^2/2/p(3)^2 + ...
+            -( X(:,2)-p(2)).^2/2/p(4)^2 ) *p(5) + p(6);
+        
         pStart = [];
-        lb = [-inf, -inf, 0, 0, -inf, -inf];
-        ub = [inf, inf, inf, inf, inf, inf];
+        lb=[-0.5*params.nPixels,-0.5*params.nPixels,0,0,min(img(:)),min(img(:))];
+        ub=[1.5*params.nPixels,1.5*params.nPixels,2*params.nPixels,2*params.nPixels,2*range(img(:)),max(img(:))];
     case 3
-        % symmetric gaussian
-        fFun = @(p,X) exp( -((X(:,1)-p(1)).^2 + (X(:,2)-p(2)).^2)/2/p(3).^2) * p(4) + p(5);
+        % freely rotating bivariate gaussian function for least squares minimization
+        % parameters: [xCenter, yCenter, xSD, amplitude, offset, ySD, angle]
+%                      [  1         2      3   4           5      6     7] 
+        % parameters: [xCenter, yCenter, angle, xSD, ySD, amplitude, offset]
+                    % [ 1         2         3    4    5     6         7]
+        %         xR=@(x,y,xc,yc,th)(x-xc)*cos(th)-(y-yc)*sin(th);
+        %         yR=@(x,y,xc,yc,th)(x-xc)*sin(th)+(y-yc)*cos(th);
+        %         fFun=@(p,X) exp( -xR(X(:,1), X(:,2), p(1), p(2), p(3)).^2/2/p(4)^2 + ...
+%         %             -yR( X(:,1), X(:,2), p(1), p(2), p(3)).^2/2/p(5)^2 ) *p(6) + p(7);
+%         fFun = @(p,X) p(4).*exp(-(((cos(p(7)))^2/(2*p(3)^2) + (sin(p(7)))^2/(2*p(6)^2)).*(X(:,1)-p(1)).^2 - ...
+%             2*(sin(2*(p(7)))/(4*p(3)^2) + sin(2*(p(7)))/(4*p(6)^2)).*(X(:,1)-p(1)).*(X(:,2)-p(2)) + ...
+%             ((sin(p(7)))^2/(2*p(3)^2) + (cos(p(7))^2)/(2*p(6)^2)).*(X(:,2) - p(2)).^2)) + p(5);
+        
+        fFun = @(p,X) p(6).*exp(-(((cos(p(3)))^2/(2*p(4)^2) + (sin(p(3)))^2/(2*p(5)^2)).*(X(:,1)-p(1)).^2 - ...
+            2*(sin(2*(p(3)))/(4*p(4)^2) + sin(2*(p(3)))/(4*p(5)^2)).*(X(:,1)-p(1)).*(X(:,2)-p(2)) + ...
+            ((sin(p(3)))^2/(2*p(4)^2) + (cos(p(3))^2)/(2*p(5)^2)).*(X(:,2) - p(2)).^2)) + p(7);
+        
+        
         pStart = [];
-        lb = [-params.nPixels, -params.nPixels, 0, 0, -inf];
-        ub = [params.nPixels*2, params.nPixels, inf, inf, inf];
+        lb=[-0.5*params.nPixels,-0.5*params.nPixels,0,0,0,min(img(:)),min(img(:))];
+        ub=[1.5*params.nPixels,1.5*params.nPixels,pi,2*params.nPixels,2*params.nPixels,2*range(img(:)),max(img(:))];
 end
 
 % starting guesses
@@ -239,10 +257,17 @@ for ii = 1:nFits
     pStart(4) = mVals(1)-mVals(2);
     pStart(5) = mVals(2);
     
+    if params.ffSwitch == 2
+        pStart(6) = params.widthGuess;
+    elseif params.ffSwitch == 3
+        pStart(6) = params.widthGuess;
+        pStart(7) = pi/2;
+    end
+    
     % fit the data
     [fitPars(ii,:), ~, residual, ~, ~, ~, jacobian] = ...
         lsqcurvefit(fFun,pStart,X(~isnan(truImg(:)),:),truImg(~isnan(truImg(:))),lb,ub,opts);
-%     fitPars(ii,:) = lsqcurvefit(fFun,pStart,X(~isnan(truImg(:)),:),truImg(~isnan(truImg(:))),lb,ub,opts);
+    %     fitPars(ii,:) = lsqcurvefit(fFun,pStart,X(~isnan(truImg(:)),:),truImg(~isnan(truImg(:))),lb,ub,opts);
     % confidence intervals
     conf95(ii,:) = diff(nlparci(fitPars(ii,:), residual, 'jacobian', jacobian), 1, 2);
     
@@ -269,13 +294,13 @@ if params.checkVals
     imshow(fImg,[])
     subplot(2,4,8)
     imshow(img,[])
-
-
-set(gcf,'NextPlot','add');
-axes
-h = title(['Frame number ' num2str(params.frameNumber)]);
-set(gca,'Visible','off');
-set(h,'Visible','on');
+    
+    
+    set(gcf,'NextPlot','add');
+    axes
+    h = title(['Frame number ' num2str(params.frameNumber)]);
+    set(gca,'Visible','off');
+    set(h,'Visible','on');
 end
 warning('on','MATLAB:singularMatrix');
 end
