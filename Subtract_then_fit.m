@@ -339,7 +339,8 @@ else
     fname=[pathstr,filesep,fname,'_fits.mat'];
 end
 save(fname,'fits','mov_fname','Mol_off_frames_fname','guessfname',...
-    'MLE_fit','stdtol','maxerr','dfrlmsz','movsz','moloffwin','tictoc','do_avgsub')
+    'MLE_fit','stdtol','maxerr','dfrlmsz','movsz','moloffwin','tictoc',...
+    'do_avgsub','which_gaussian')
 
 try
     close(h1)

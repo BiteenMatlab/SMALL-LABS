@@ -55,7 +55,7 @@ disp(['Tracking ',fname]);
 
 tracks = Tracking(fits_fname,trackparams,savetracks);
 if ~isempty(tracks)
-    save(fits_fname,'tracks','-append')
+    save(fits_fname,'tracks','trackparams','-append')
     
     % remove the first and last entries of each track
     for ii=1:max(tracks(:,4))
