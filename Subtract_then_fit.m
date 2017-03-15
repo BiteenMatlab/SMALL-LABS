@@ -257,7 +257,7 @@ for ii=1:size(guesses,1)
             errbad=varianceF>maxerr;%too much error on fit?
         else
             %fitting with least squares
-            [fitPars,conf95,~,~]=gaussFit(data,'searchBool',0,'nPixels',2*dfrlmsz+1,...
+            [fitPars,conf95,~,~,~]=gaussFit(data,'searchBool',0,'nPixels',2*dfrlmsz+1,...
                 'checkVals',0,'ffSwitch',which_gaussian);
             %converting the variables to match the output of MLEwG, and
             %arranging for each particular Gaussian fit

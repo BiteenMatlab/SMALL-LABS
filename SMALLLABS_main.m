@@ -177,10 +177,14 @@ paramsnames=fieldnames(params);
 if nargin>4
     for ii=1:2:nargin-5
         whichField = strcmp(paramsnames,varargin{ii});
-        if all(~whichField)
-            warning('Check spelling. Parameter change may have not occurred.')
+%         if all(~whichField)
+%             warning('Check spelling. Parameter change may have not occurred.')
+%         end
+        try
+            eval(['params.' paramsnames{whichField} ' = varargin{ii+1};'])
+        catch
+           error([varargin{ii}, '  is not an input parameter. Check the spelling.'])  
         end
-        eval(['params.' paramsnames{whichField} ' = varargin{ii+1};'])
     end
 end
 

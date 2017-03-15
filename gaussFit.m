@@ -1,4 +1,4 @@
-function [fitPars, conf95, guesses, outPut]=gaussFit(img, varargin)
+function [fitPars, conf95, guesses, outPut, residual]=gaussFit(img, varargin)
 %
 % NAME:
 %       gaussFit
@@ -101,52 +101,30 @@ switch params.ffSwitch
         % symmetric gaussian
         % parameters: [xCenter, yCenter, SD, amplitude, offset]
         fFun = @(p,X) exp( -((X(:,1)-p(1)).^2 + (X(:,2)-p(2)).^2)/2/p(3).^2) * p(4) + p(5);
-        pStart = [];
-        lb=[-0.5*params.nPixels,-0.5*params.nPixels,0,min(img(:)),min(img(:))];
+        
+        pStart = [0,0,params.widthGuess,.75*range(img(:)),min(img(:))+0.1*range(img(:))];
+        lb=[-0.5*params.nPixels,-0.5*params.nPixels,0,0,min(img(:))];
         ub=[1.5*params.nPixels,1.5*params.nPixels,2*params.nPixels,2*range(img(:)),max(img(:))];
     case 2
         % fixed angle fit
         % parameters: [xCenter, yCenter, xSD, ySD, amplitude, offset]
-        %         th = 0;
-        %         xR = @(x,y,xc,yc)(x-xc)*cos(th)-(y-yc)*sin(th);
-        %         yR = @(x,y,xc,yc)(x-xc)*sin(th)+(y-yc)*cos(th);
-        %         fFun = @(p,X) exp( -xR(X(:,1), X(:,2), p(1), p(2)).^2/2/p(3)^2 + ...
-        %             -yR( X(:,1), X(:,2), p(1), p(2)).^2/2/p(4)^2 ) *p(5) + p(6);
-        
         fFun = @(p,X) exp( -(X(:,1)-p(1)).^2/2/p(3)^2 + ...
             -( X(:,2)-p(2)).^2/2/p(4)^2 ) *p(5) + p(6);
         
-        pStart = [];
-        lb=[-0.5*params.nPixels,-0.5*params.nPixels,0,0,min(img(:)),min(img(:))];
+        pStart = [0,0,params.widthGuess,params.widthGuess,.75*range(img(:)),min(img(:))+0.1*range(img(:))];
+        lb=[-0.5*params.nPixels,-0.5*params.nPixels,0,0,0,min(img(:))];
         ub=[1.5*params.nPixels,1.5*params.nPixels,2*params.nPixels,2*params.nPixels,2*range(img(:)),max(img(:))];
     case 3
         % freely rotating bivariate gaussian function for least squares minimization
-        % parameters: [xCenter, yCenter, xSD, amplitude, offset, ySD, angle]
-%                      [  1         2      3   4           5      6     7] 
         % parameters: [xCenter, yCenter, angle, xSD, ySD, amplitude, offset]
-                    % [ 1         2         3    4    5     6         7]
-        %         xR=@(x,y,xc,yc,th)(x-xc)*cos(th)-(y-yc)*sin(th);
-        %         yR=@(x,y,xc,yc,th)(x-xc)*sin(th)+(y-yc)*cos(th);
-        %         fFun=@(p,X) exp( -xR(X(:,1), X(:,2), p(1), p(2), p(3)).^2/2/p(4)^2 + ...
-%         %             -yR( X(:,1), X(:,2), p(1), p(2), p(3)).^2/2/p(5)^2 ) *p(6) + p(7);
-%         fFun = @(p,X) p(4).*exp(-(((cos(p(7)))^2/(2*p(3)^2) + (sin(p(7)))^2/(2*p(6)^2)).*(X(:,1)-p(1)).^2 - ...
-%             2*(sin(2*(p(7)))/(4*p(3)^2) + sin(2*(p(7)))/(4*p(6)^2)).*(X(:,1)-p(1)).*(X(:,2)-p(2)) + ...
-%             ((sin(p(7)))^2/(2*p(3)^2) + (cos(p(7))^2)/(2*p(6)^2)).*(X(:,2) - p(2)).^2)) + p(5);
-        
         fFun = @(p,X) p(6).*exp(-(((cos(p(3)))^2/(2*p(4)^2) + (sin(p(3)))^2/(2*p(5)^2)).*(X(:,1)-p(1)).^2 - ...
             2*(sin(2*(p(3)))/(4*p(4)^2) + sin(2*(p(3)))/(4*p(5)^2)).*(X(:,1)-p(1)).*(X(:,2)-p(2)) + ...
             ((sin(p(3)))^2/(2*p(4)^2) + (cos(p(3))^2)/(2*p(5)^2)).*(X(:,2) - p(2)).^2)) + p(7);
         
-        
-        pStart = [];
-        lb=[-0.5*params.nPixels,-0.5*params.nPixels,0,0,0,min(img(:)),min(img(:))];
+        pStart = [0,0,pi/2,params.widthGuess,params.widthGuess,.75*range(img(:)),min(img(:))+0.1*range(img(:))];
+        lb=[-0.5*params.nPixels,-0.5*params.nPixels,0,0,0,0,min(img(:))];
         ub=[1.5*params.nPixels,1.5*params.nPixels,pi,2*params.nPixels,2*params.nPixels,2*range(img(:)),max(img(:))];
 end
-
-% starting guesses
-pStart(1) = 0;
-pStart(2) = 0;
-pStart(3) = params.widthGuess;
 
 %% rough localization of molecules
 if params.searchBool
@@ -251,18 +229,6 @@ for ii = 1:nFits
     
     % select the data
     truImg = img(inds);
-    
-    % amplitude, offset starting values
-    mVals = [nanmax(truImg(:)),nanmin(truImg(:))];
-    pStart(4) = mVals(1)-mVals(2);
-    pStart(5) = mVals(2);
-    
-    if params.ffSwitch == 2
-        pStart(6) = params.widthGuess;
-    elseif params.ffSwitch == 3
-        pStart(6) = params.widthGuess;
-        pStart(7) = pi/2;
-    end
     
     % fit the data
     [fitPars(ii,:), ~, residual, ~, ~, ~, jacobian] = ...
