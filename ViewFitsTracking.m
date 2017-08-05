@@ -19,6 +19,22 @@ function  ViewFitsTracking(movfname,fits_fname,circ_D,write_mov,autoscale_on,lin
 % are used to set the grayscale
 % 
 % linewidth is the linewidth of the circles in the movie. Default is 1
+
+%     Copyright (C) 2017  Benjamin P Isaacoff
+%
+%     This program is free software: you can redistribute it and/or modify
+%     it under the terms of the GNU General Public License as published by
+%     the Free Software Foundation, either version 3 of the License, or
+%     (at your option) any later version.
+% 
+%     This program is distributed in the hope that it will be useful,
+%     but WITHOUT ANY WARRANTY; without even the implied warranty of
+%     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+%     GNU General Public License for more details.
+% 
+%     You should have received a copy of the GNU General Public License
+%     along with this program.  If not, see <http://www.gnu.org/licenses/>.
+%
 %
 if nargin<3;circ_D=7;end
 if nargin<4;write_mov=0;end
