@@ -26,12 +26,12 @@ function off_frames=Mol_off_frames(guessfname,dfrlmsz,moloffwin)
 %     it under the terms of the GNU General Public License as published by
 %     the Free Software Foundation, either version 3 of the License, or
 %     (at your option) any later version.
-% 
+%
 %     This program is distributed in the hope that it will be useful,
 %     but WITHOUT ANY WARRANTY; without even the implied warranty of
 %     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 %     GNU General Public License for more details.
-% 
+%
 %     You should have received a copy of the GNU General Public License
 %     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 %
@@ -75,11 +75,12 @@ for ii=1:movsz(3)
     
     %skip it if there aren't any guesses in the current frame
     if nummol~=0
-        %determine the frame list of frames to check for the current frame
         if ii<=(moloffwin/2)%the first group of frames
-            frmlst=ii+[-(ii-1):-1,1:(moloffwin/2)];
+            frmlst=1:(moloffwin+1);
+            frmlst=frmlst(frmlst~=ii);
         elseif ii>=(movsz(3)-moloffwin/2)%the last group of frames
-            frmlst=movsz(3)+(-moloffwin:0);
+            frmlst=movsz(3)+((-moloffwin):0);
+            frmlst=frmlst(frmlst~=ii);
         else %all the frames in the middle
             frmlst=ii+[(-moloffwin/2):-1,1:(moloffwin/2)];
         end
@@ -88,7 +89,7 @@ for ii=1:movsz(3)
         %then pull out the row & column #'s
         mols2frms=find(ismembc(guesses(:,1),frmlst));
         allr=guesses(mols2frms,2);
-        allc=guesses(mols2frms,3);        
+        allc=guesses(mols2frms,3);
         
         for jj=frmrows(1):frmrows(end)
             %current molecule's position
@@ -109,7 +110,7 @@ for ii=1:movsz(3)
                 warning(['Guess ',num2str(jj),' only has ',...
                     num2str(length(off_frames{jj})),' off frames. Consider increasing moloffwin'])
             end
-        end        
+        end
     end
 end
 
