@@ -9,7 +9,7 @@ function SMALLLABS_main(directoryname,dfrlmsz,avgwin,moloffwin,varargin)
 % single molecule imaging movies so that the molecules can be fit and their
 % intensity accurately measured using the SMALL-LABS algorithm.
 %
-% Note: that by setting bgsub=0 SMALLLABS_main will do fitting without doing
+% Note: that by setting bgsub=false SMALLLABS_main will do fitting without doing
 % background subtraction. Doing this obviates a lot of parameters, it
 % doesn't matter what they're set to. See the User Guide for more details.
 %
@@ -63,7 +63,7 @@ function SMALLLABS_main(directoryname,dfrlmsz,avgwin,moloffwin,varargin)
 %
 %%%%
 % Written by Benjamin P Isaacoff at the University of Michigan last update
-% 3/15/17 BPI
+% 12/12/17 BPI
 %
 %     Copyright (C) 2017  Benjamin P Isaacoff
 %
@@ -91,23 +91,23 @@ function SMALLLABS_main(directoryname,dfrlmsz,avgwin,moloffwin,varargin)
 % Do background subtraction
 params.bgsub = 1;
 % Do guessing
-params.makeGuesses = 1;
+params.makeGuesses = true;
 % Check guesses
-params.check_guesses = 0;
+params.check_guesses = false;
 % Make the off frames list
-params.makeOffFrames = 1;
+params.makeOffFrames = true;
 % Do fitting
-params.fitting = 1;
+params.fitting = true;
 % Do tracking
-params.tracking = 1;
+params.tracking = true;
 % Make the ViewFits movie
-params.makeViewFits = 1;
+params.makeViewFits = true;
 
 %%% AVGSUB parameters %%%
 % subtract the temporal average? otherwise use median
-params.do_avg = 1;
+params.do_avg = true;
 % running average (or median) boolean or use a static window
-params.runningavg = 1;
+params.runningavg = true;
 % AVGSUB offset
 params.offset = 1000;
 
@@ -117,21 +117,21 @@ params.bpthrsh = 95;
 % how many pixels to ignore around the edge of the frame
 params.egdesz = dfrlmsz;
 % compare brightnesses in each frame? otherwise use entire movie
-params.pctile_frame = 0;
-% use a mask for guessing? What is it's filename? Set to 1 to look for .mat
+params.pctile_frame = false;
+% use a mask for guessing? What is it's filename? Set to true to look for .mat
 % file w/ '_PhaseMask' appended to movie name
 params.mask_fname=[];
 % make a movie (.avi) of the guesses to check parameters
-params.make_guessmovie = 0;
+params.make_guessmovie = false;
 
 %%% Fitting parameters %%%
 % do MLE fitting? If not least squares fitting will be used
-params.MLE_fit = 0;
+params.MLE_fit = false;
 % Goodfit parameters. See Subtract_mol_off_frames for the details
 params.stdtol = 1.5;
 params.maxerr = 2; %if you change this please also change the if statement after the next loop
 % subtract the mean of off frames? If not use median
-params.do_avgsub = 1;
+params.do_avgsub = true;
 % Which Gaussian function to fit to when using LSQ fitting? 1. symmetric,
 % 2. fixed angle asymmetric, 3. free angle asymmetric
 params.which_gaussian = 1;
@@ -139,7 +139,7 @@ params.which_gaussian = 1;
 %%% Tracking parameters %%%
 % default is [0,0.01,200,1,3,3,1,0]
 % save the tracks .mat file?
-params.savetracks = 0;
+params.savetracks = false;
 % minimum merit
 params.trackparams(1)=0.01;
 % Integration time (ms)
@@ -157,17 +157,17 @@ params.trackparams(7)=0;
 
 %%% ViewFits parameters %%%
 % use the original movie? if not, use the avgsub movie
-params.orig_movie = 1;
+params.orig_movie = true;
 % diameter of the circles showing the fits
 params.circ_D = dfrlmsz;
 % linewidth of the circles
 params.linewidth = 1;
 % write a .avi movie showing the fits. If not, goes to debug mode
-params.write_mov=1;
+params.write_mov=true;
 % autoscale frame by frame?
-params.autoscale_on = 0;
+params.autoscale_on = false;
 % use the tracking viewfits instead
-params.trackingVF = 0;
+params.trackingVF = false;
 
 %% Evaluating the inputs
 %This section nearly verbatim from DJR
@@ -219,10 +219,10 @@ end
 %directory, it opens in the current directory.
 disp('Select the movie(s)')
 try
-    [datalist,dataloc,findex]=uigetfile([directoryname filesep '*.tif*'],'multiselect','on');
+    [datalist,dataloc,findex]=uigetfile(directoryname,'multiselect','on');
 catch
     curdir=pwd;
-    [datalist,dataloc,findex]=uigetfile([curdir filesep '*.tif*'],'multiselect','on');
+    [datalist,dataloc,findex]=uigetfile(curdir,'multiselect','on');
 end
 if findex==0
     fprintf('no data selected\n')
@@ -230,7 +230,15 @@ if findex==0
 end
 if ~iscell(datalist); datalist={datalist}; end
 for ii=1:numel(datalist); datalist{ii}=[dataloc datalist{ii}]; end
-[dlocs,dnames,~]=cellfun(@fileparts,datalist,'uniformoutput',false);
+[dlocs,dnames,exts]=cellfun(@fileparts,datalist,'uniformoutput',false);
+
+%% Convert the movies to .mat
+% Movies must be version 7.3 mat files with the movie data saved in the
+% 'mov' variable. This function converts several standard scientific movie
+% data types into this format.
+for ii=1:numel(dlocs)
+    Movie2mat([dlocs{ii},filesep,dnames{ii},exts{ii}])
+end
 
 %% The Average Subtraction
 % Only if doing bgsub.
@@ -242,14 +250,14 @@ for ii=1:numel(datalist); datalist{ii}=[dataloc datalist{ii}]; end
 % moviename_avgsub.tif and write a .txt file with the parameters, called
 % moviename_avgsub_info.txt
 if params.makeGuesses && params.bgsub
-    bFiles=dir([dataloc,'*_avgsub.tif']);%list all the avgsub tif stacks
+    bFiles=dir([dataloc,'*_avgsub.mat']);%list all the avgsub tif stacks
     for ii=1:numel(dlocs)
         %compare the chosen files with the avgsub list and choose ones
         %without an avgsub movie
-        if ~any(ismember({bFiles.name},[dnames{ii},'_avgsub.tif']))&&...
+        if ~any(ismember({bFiles.name},[dnames{ii},'_avgsub.mat']))&&...
                 ~any(ismember({bFiles.name},dnames{ii}))
             %do the avgsub
-            AVGSUB_tiffs([dlocs{ii},filesep,dnames{ii},'.tif'],...
+            AVGSUB_movs([dlocs{ii},filesep,dnames{ii},'.mat'],...
                 params.do_avg,params.runningavg,avgwin,params.offset);
         end
     end
@@ -262,11 +270,11 @@ end
 if params.makeGuesses
     for ii=1:numel(dlocs)
         if params.bgsub
-            Guessing([dlocs{ii},filesep,dnames{ii},'_avgsub.tif'],dfrlmsz,...
+            Guessing([dlocs{ii},filesep,dnames{ii},'_avgsub.mat'],dfrlmsz,...
                 params.bpthrsh,params.egdesz,params.pctile_frame,params.check_guesses,...
                 params.mask_fname,params.make_guessmovie);
         else
-            Guessing([dlocs{ii},filesep,dnames{ii},'.tif'],dfrlmsz,...
+            Guessing([dlocs{ii},filesep,dnames{ii},'.mat'],dfrlmsz,...
                 params.bpthrsh,params.egdesz,params.pctile_frame,params.check_guesses,...
                 params.mask_fname,params.make_guessmovie);
         end

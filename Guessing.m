@@ -53,12 +53,12 @@ function guesses=Guessing(mov_fname,dfrlmsz,bpthrsh,egdesz,pctile_frame,debugmod
 %     it under the terms of the GNU General Public License as published by
 %     the Free Software Foundation, either version 3 of the License, or
 %     (at your option) any later version.
-% 
+%
 %     This program is distributed in the hope that it will be useful,
 %     but WITHOUT ANY WARRANTY; without even the implied warranty of
 %     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 %     GNU General Public License for more details.
-% 
+%
 %     You should have received a copy of the GNU General Public License
 %     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 %
@@ -68,6 +68,8 @@ if nargin<3;bpthrsh=90;end
 if nargin<4;egdesz=dfrlmsz;end
 if nargin<5;pctile_frame=1;end
 if nargin<6;debugmode=0;end
+if nargin<7;mask_fname=[];end
+if nargin<8;make_guessmovie=0;end
 
 %did you not set dfrlmsz to an integer?
 if dfrlmsz~=round(dfrlmsz);error('dfrlmsz must be an integer');end
@@ -77,13 +79,38 @@ pdsz=50;
 
 tic;%for measuring the time to run the entire program
 % last updated 8/12/16 BPI
-%% Peak Guessing
-tfstk=TIFFStack(mov_fname);
-movsz=size(tfstk);%the size of the movie
+%% Setup
+
+% check if a GPU is available
+try
+    usegpu=parallel.gpu.GPUDevice.isAvailable;
+catch
+    usegpu=false;
+end
+
+matio=matfile(mov_fname,'Writable',false);
 [pathstr,fname] = fileparts(mov_fname);
+%get the movie size
+movsz=whos(matio,'mov');
+movsz=movsz.size;
+
+if usegpu
+    mov=gpuArray(double(matio.mov));
+else
+    mov=double(matio.mov);
+end
+
+%look for a goodframe list, otherwise set all frames as goodframes
+try
+    goodframe=matio.goodframe;
+catch
+    goodframe=true(movsz(3),1);
+end
 
 %intializing the guess indices cell array
 guesses=zeros(1,3);
+
+%% Guessing
 
 %making the phasemask logical map
 if ~isempty(mask_fname)
@@ -99,25 +126,38 @@ if ~isempty(mask_fname)
 else
     PhaseMask=true(movsz([1,2]));
 end
+if usegpu
+    PhaseMask=gpuArray(PhaseMask);
+end
 
 %using the percentiles on the entire movie
 if ~pctile_frame
     %initializing the bandpassed movie
-    bimgmov=zeros(movsz);
+    if usegpu
+        bimgmov=zeros(movsz,'gpuArray');
+    else
+        bimgmov=zeros(movsz);
+    end
     %looping through and making the bandpassed movie
     for ll=1:movsz(3)
-        %padding the current frame to avoid the Fourier ringing associated
-        %with the edges of the image
-        curfrm=padarray(double(tfstk(:,:,ll)),[pdsz,pdsz],'symmetric');
-        %bandpass parameters
-        LP=2;%lnoise, should always be 1
-        HP=round(dfrlmsz*1.5);%lobject, set by diffraction limit
-        T=0;%threshold, now always zero
-        lzero=egdesz;%how many pixels around the edge should be ignored, optional
-        %bandpass it
-        bimg=bpass(curfrm,LP,HP,T,lzero+pdsz);
-        %removed the padded pixels around the edge
-        bimgmov(:,:,ll)=bimg((pdsz+1):(movsz(1)+pdsz),(pdsz+1):(movsz(2)+pdsz));
+        if goodframe(ll)
+            %padding the current frame to avoid the Fourier ringing associated
+            %with the edges of the image
+            if usegpu
+                curfrm=padarray(mov(:,:,ll),[pdsz,pdsz],'symmetric');
+            else
+                curfrm=padarray(mov(:,:,ll),[pdsz,pdsz],'symmetric');
+            end
+            %bandpass parameters
+            LP=2;%lnoise, should always be 1
+            HP=round(dfrlmsz*1.5);%lobject, set by diffraction limit
+            T=0;%threshold, now always zero
+            lzero=egdesz;%how many pixels around the edge should be ignored, optional
+            %bandpass it
+            bimg=bpass(curfrm,LP,HP,T,lzero+pdsz);
+            %removed the padded pixels around the edge
+            bimgmov(:,:,ll)=bimg((pdsz+1):(movsz(1)+pdsz),(pdsz+1):(movsz(2)+pdsz));
+        end
     end
     
     %convert it to a logical movie by thresholding with the bpthrsh
@@ -139,55 +179,61 @@ waitbar(0,h1,['Making guesses for ',fname]);
 
 for ll=1:movsz(3)
     try;waitbar(ll/movsz(3),h1);end
-    %using the percentile on each frame
-    if pctile_frame
-        %padding the current frame to avoid the Fourier ringing associated
-        %with the edges of the image
-        curfrm=double(tfstk(:,:,ll));
-        curfrmbp=padarray(curfrm,[pdsz,pdsz],'symmetric');
-        
-        %bandpass parameters
-        LP=1;%lnoise, should always be 1
-        HP=round(dfrlmsz*1.5);%lobject, set by diffraction limit
-        T=0;%threshold, now always zero
-        lzero=egdesz;%how many pixels around the edge should be ignored, optional
-        %bandpass it
-        bimg=bpass(curfrmbp,LP,HP,T,lzero+pdsz);
-        %pull out the actual data
-        bimg=bimg((pdsz+1):(movsz(1)+pdsz),(pdsz+1):(movsz(2)+pdsz));
-        
-        %threshold with the bpthrsh percentile of the brightnesses for nonzero
-        %pixels, then turn it into a logical array
-        logim=logical(bimg.*(bimg>prctile(bimg(bimg>0 & PhaseMask),bpthrsh)).*PhaseMask);
-    else
-        logim=bimgmov(:,:,ll);
-    end
-    
-    %search for shapes with an EquivDiameter of floor(dfrlmsz/2) to 2*dfrlmsz
-    bw2=bwpropfilt(logim,'EquivDiameter',[floor(dfrlmsz/2),2*dfrlmsz]);
-    rgps=regionprops(bw2,'centroid');% find the centroids of those shapes
-    centroids = cat(1, rgps.Centroid);%just rearraging the array
-    %filling the array for this frame
-    if ~isempty(centroids)
-        guesses=cat(1,guesses,[repmat(ll,size(centroids(:,2))),round(centroids(:,2)),round(centroids(:,1))]);
-    end
-    
-    if debugmode || make_guessmovie %plot the guesses, for checking parameters
-        if ~pctile_frame
-            curfrm=double(tfstk(:,:,ll));
+    if goodframe(ll)
+        %using the percentile on each frame
+        if pctile_frame
+            %padding the current frame to avoid the Fourier ringing associated
+            %with the edges of the image
+            if usegpu
+                curfrm=mov(:,:,ll);
+            else
+                curfrm=mov(:,:,ll);
+            end            
+            curfrmbp=padarray(curfrm,[pdsz,pdsz],'symmetric');
+            
+            %bandpass parameters
+            LP=1;%lnoise, should always be 1
+            HP=round(dfrlmsz*1.5);%lobject, set by diffraction limit
+            T=0;%threshold, now always zero
+            lzero=egdesz;%how many pixels around the edge should be ignored, optional
+            %bandpass it
+            bimg=bpass(curfrmbp,LP,HP,T,lzero+pdsz);
+            %pull out the actual data
+            bimg=bimg((pdsz+1):(movsz(1)+pdsz),(pdsz+1):(movsz(2)+pdsz));
+            
+            %threshold with the bpthrsh percentile of the brightnesses for nonzero
+            %pixels, then turn it into a logical array
+            logim=logical(bimg.*(bimg>prctile(bimg(bimg>0 & PhaseMask),bpthrsh)).*PhaseMask);
+        else
+            logim=bimgmov(:,:,ll);
         end
-        imshow(curfrm,prctile(curfrm(curfrm>0),[.1,99.8]))
+        
+        %search for shapes with an EquivDiameter of floor(dfrlmsz/2) to 2*dfrlmsz
+        bw2=bwpropfilt(logim,'EquivDiameter',[floor(dfrlmsz/2),2*dfrlmsz]);
+        rgps=regionprops(bw2,'centroid');% find the centroids of those shapes
+        centroids = cat(1, rgps.Centroid);%just rearraging the array
+        %filling the array for this frame
         if ~isempty(centroids)
-            %viscircles is reversed
-            vcs=viscircles([centroids(:,1),centroids(:,2)],repmat(dfrlmsz,[length(centroids(:,2)),1]));
-            set(vcs.Children,'LineWidth',1)
+            guesses=cat(1,guesses,[repmat(ll,size(centroids(:,2))),round(centroids(:,2)),round(centroids(:,1))]);
         end
-        if debugmode
-            title([fname,'   frame ',num2str(ll)],'Interpreter','none')
-            keyboard
-        elseif make_guessmovie
-            frame = getframe;
-            writeVideo(v,frame);
+        
+        if debugmode || make_guessmovie %plot the guesses, for checking parameters
+            if ~pctile_frame
+                curfrm=mov(:,:,ll);
+            end
+            imshow(curfrm,prctile(curfrm(curfrm>0),[.1,99.8]))
+            if ~isempty(centroids)
+                %viscircles is reversed
+                vcs=viscircles([centroids(:,1),centroids(:,2)],repmat(dfrlmsz,[length(centroids(:,2)),1]));
+                set(vcs.Children,'LineWidth',1)
+            end
+            if debugmode
+                title([fname,'   frame ',num2str(ll)],'Interpreter','none')
+                keyboard
+            elseif make_guessmovie
+                frame = getframe;
+                writeVideo(v,frame);
+            end
         end
     end
 end
