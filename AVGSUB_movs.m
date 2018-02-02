@@ -83,19 +83,19 @@ end
  
 if usegpu
     disp(['Running AVGSUB_movs on a GPU for ',fname])
-    mov=gpuArray(double(matio.mov));
+    mov=gpuArray(int16(matio.mov));
 else
     disp(['Running AVGSUB_movs for ',fname])
-    mov=double(matio.mov);
+    mov=int16(matio.mov);
 end
 %change the bad frames as determined by the goodframe list to NaNs
 mov(:,:,~goodframe)=NaN;
 
 %% Do the avgsub
 if do_avg
-    bgsub_mov=mov-movmean(mov,subwidth,3,'omitnan')+offset;
+    bgsub_mov=mov-int16(movmean(mov,subwidth,3,'omitnan'))+offset;
 else
-    bgsub_mov=mov-movmedian(mov,subwidth,3,'omitnan')+offset;
+    bgsub_mov=mov-int16(movmedian(mov,subwidth,3,'omitnan'))+offset;
 end
 
 % bgsub_mov(:,:,~gfs)=NaN;
@@ -111,9 +111,9 @@ tictoc=toc;%the time to do the calculations
 %%%%Save the movie%%%%
 %rename the bgsub movie for saving
 if usegpu
-    mov=gather(bgsub_mov);
+    mov=int16(gather(bgsub_mov));
 else
-    mov=bgsub_mov;
+    mov=int16(bgsub_mov);
 end
 save([pathstr,filesep,fname,'_avgsub.mat'],'mov','goodframe','runningavg','subwidth','offset','tictoc','-v7.3')
 

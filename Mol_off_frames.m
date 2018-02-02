@@ -60,6 +60,13 @@ tic;%for measuring the time to run the entire program
 %load in the guesses & the movie size
 load(guessfname,'guesses','movsz');
 
+%look for a goodframe list, otherwise set all frames as goodframes
+try
+    load(guessfname,'goodframe');
+catch
+    goodframe=true(movsz(3),1);
+end
+
 %cell array of off frames vectors, for each localization (each row of
 %guesses) a list of frames to include
 off_frames=cell(size(guesses,1),1);
@@ -97,8 +104,9 @@ for ii=1:movsz(3)
             molc=guesses(jj,3);
             dists=(abs(allr-molr)<dfrlmsz) & (abs(allc-molc)<dfrlmsz);
             
-            %save the lists of frames  in which the current localization is off.
-            off_frames{jj}=frmlst(~ismembc(frmlst,guesses((mols2frms(dists,1)),1)));
+            %save the lists of frames  in which the current localization is
+            %off and it is safe to subtract (using goodframes)
+            off_frames{jj}=frmlst(~ismembc(frmlst,guesses((mols2frms(dists,1)),1)) & goodframe(frmlst)');
             
             % NOTE : when I first wrote this I thought that there needed to
             % be a unique as shown below. In reviewing this though, I don't

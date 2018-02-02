@@ -95,9 +95,9 @@ movsz=whos(matio,'mov');
 movsz=movsz.size;
 
 if usegpu
-    mov=gpuArray(double(matio.mov));
+    mov=gpuArray(int16(matio.mov));
 else
-    mov=double(matio.mov);
+    mov=int16(matio.mov);
 end
 
 %look for a goodframe list, otherwise set all frames as goodframes
@@ -221,7 +221,7 @@ for ll=1:movsz(3)
             if ~pctile_frame
                 curfrm=mov(:,:,ll);
             end
-            imshow(curfrm,prctile(curfrm(curfrm>0),[.1,99.8]))
+            imshow(double(curfrm),prctile(double(curfrm(curfrm>0)),[.1,99.8]))
             if ~isempty(centroids)
                 %viscircles is reversed
                 vcs=viscircles([centroids(:,1),centroids(:,2)],repmat(dfrlmsz,[length(centroids(:,2)),1]));
@@ -247,7 +247,7 @@ end
 tictoc=toc;%the time to run the entire program
 
 [pathstr,name,~] = fileparts(mov_fname);
-save([pathstr,filesep,name,'_guesses.mat'],'guesses','dfrlmsz','egdesz','pctile_frame','bpthrsh',...
+save([pathstr,filesep,name,'_guesses.mat'],'guesses','goodframe','dfrlmsz','egdesz','pctile_frame','bpthrsh',...
     'movsz','tictoc','mask_fname');
 
 try

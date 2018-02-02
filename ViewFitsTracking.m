@@ -40,16 +40,24 @@ if nargin<3;circ_D=7;end
 if nargin<4;write_mov=0;end
 if nargin<5;autoscale_on=0;end
 if nargin<6;linewidth=1;end
-%%
+%% setup
 
 %load in fits
 load(fits_fname);
 
-%create A `TIFFStack` object  which behaves like a read-only memory
-%mapped TIFF file
-tfstk=TIFFStack(movfname);
-movsz=size(tfstk);%the size of the movie
-[pathstr,name,~] = fileparts(movfname);
+matio=matfile(movfname,'Writable',false);
+%get the movie size
+movsz=whos(matio,'mov');
+movsz=movsz.size;
+
+[pathstr,name,ext] = fileparts(movfname);
+
+%look for a goodframe list, otherwise set all frames as goodframes
+try
+    goodframe=matio.goodframe;
+catch
+    goodframe=true(movsz(3),1);
+end
 
 if write_mov
     v = VideoWriter([pathstr,filesep,name,'_ViewFitsTracking.avi'],'Uncompressed AVI');
@@ -58,10 +66,14 @@ if write_mov
     disp(['Making ViewFits for ',name]);
 end
 
+%load in the movie
+mov=double(matio.mov);
+
+%% Make the ViewFits movie
 if ~autoscale_on
     frms4scl=100 ;%number of frames for the scaling
     %pull out some frames to find the percentiles of
-    frmscl=double(tfstk(:,:,round(linspace(1,movsz(3),frms4scl))));
+    frmscl=mov(:,:,round(linspace(1,movsz(3),frms4scl)));
     % the intensity bounds for not autoscaling
     int_bounds=prctile(frmscl(frmscl>0),[.1,99.8]);
 end
@@ -73,7 +85,7 @@ figure
 set(gcf,'Position',[1281,1,1280,948])
 for ii=1:movsz(3)
     
-    curfrm=double(tfstk(:,:,ii));
+    curfrm=mov(:,:,ii);
     
     if autoscale_on
         int_bounds=prctile(curfrm(curfrm>0),[.1,99.8]);
