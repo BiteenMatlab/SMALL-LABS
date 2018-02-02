@@ -219,10 +219,10 @@ end
 %directory, it opens in the current directory.
 disp('Select the movie(s)')
 try
-    [datalist,dataloc,findex]=uigetfile(directoryname,'multiselect','on');
+    [datalist,dataloc,findex]=uigetfile([directoryname,filesep,'*.*'],'multiselect','on');
 catch
     curdir=pwd;
-    [datalist,dataloc,findex]=uigetfile(curdir,'multiselect','on');
+    [datalist,dataloc,findex]=uigetfile([curdir,filesep,'*.*'],'multiselect','on');
 end
 if findex==0
     fprintf('no data selected\n')
