@@ -107,11 +107,11 @@ tic;%for measuring the time to run the entire program
 %% Import the data
 
 % check if a GPU is available
-try
-    usegpu=parallel.gpu.GPUDevice.isAvailable;
-catch
+% try
+%     usegpu=parallel.gpu.GPUDevice.isAvailable;
+% catch
     usegpu=false;
-end
+% end
 
 matio=matfile(mov_fname,'Writable',false);
 [pathstr,fname] = fileparts(mov_fname);

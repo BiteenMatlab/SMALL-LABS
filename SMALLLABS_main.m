@@ -137,15 +137,15 @@ params.do_avgsub = true;
 params.which_gaussian = 1;
 
 %%% Tracking parameters %%%
-% default is [0,0.01,200,1,3,3,1,0]
-% save the tracks .mat file?
+% default is [0.01,200,0.5,3,3,1,0]
+% save the separate tracks .mat file?
 params.savetracks = false;
 % minimum merit
 params.trackparams(1)=0.01;
 % Integration time (ms)
 params.trackparams(2)=200;
 % gamma
-params.trackparams(3)=0.01;
+params.trackparams(3)=0.5;
 % maximum step size
 params.trackparams(4)=3;
 % minimum track length
@@ -202,10 +202,6 @@ if dfrlmsz~=round(dfrlmsz);error('dfrlmsz must be an integer');end
 %Rounding avgwin & moloffwin and reseting them to proper values. Not
 %erroring because they are "weak" parameters. Only needed if doing bgsub
 if params.bgsub
-    if avgwin~=(ceil(avgwin/2)*2-1)
-        avgwin=ceil(avgwin/2)*2-1;
-        warning(['avgwin must be an odd integer. It has been reset to avgwin = ',num2str(avgwin)])
-    end
     if moloffwin~=(ceil(moloffwin/2)*2)
         moloffwin=(ceil(moloffwin/2)*2);
         warning(['moloffwin must be an even integer. It has been reset to avgwin = ',num2str(moloffwin)])

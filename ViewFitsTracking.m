@@ -81,6 +81,9 @@ end
 %colors to use for the tracks
 colors=jet(5);
 
+%the tracks corresponding to each color
+trackCnum=mod(unique(tracks(:,4)),5);
+
 figure
 set(gcf,'Position',[1281,1,1280,948])
 for ii=1:movsz(3)
@@ -126,7 +129,7 @@ for ii=1:movsz(3)
         writeVideo(v,frame);
     else
         title([name,' frame #',num2str(ii)],'Interpreter', 'none')
-        keyboard
+        keyboard        
     end    
 end
 

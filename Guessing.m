@@ -82,11 +82,11 @@ tic;%for measuring the time to run the entire program
 %% Setup
 
 % check if a GPU is available
-try
-    usegpu=parallel.gpu.GPUDevice.isAvailable;
-catch
+% try
+%     usegpu=parallel.gpu.GPUDevice.isAvailable;
+% catch
     usegpu=false;
-end
+% end
 
 matio=matfile(mov_fname,'Writable',false);
 [pathstr,fname] = fileparts(mov_fname);
@@ -138,9 +138,11 @@ if ~pctile_frame
     else
         bimgmov=zeros(movsz);
     end
+    goodfrmmov=false(movsz);
     %looping through and making the bandpassed movie
     for ll=1:movsz(3)
         if goodframe(ll)
+            goodfrmmov(:,:,ll)=true;
             %padding the current frame to avoid the Fourier ringing associated
             %with the edges of the image
             if usegpu
@@ -163,7 +165,7 @@ if ~pctile_frame
     %convert it to a logical movie by thresholding with the bpthrsh
     %percentile of the brightnesses for nonzero pixels
     bimgmov=logical(bimgmov.*(bimgmov>prctile(bimgmov(bimgmov>0 & ...
-        repmat(PhaseMask,[1,1,movsz(3)])),bpthrsh)).*repmat(PhaseMask,[1,1,movsz(3)]));
+        goodfrmmov & repmat(PhaseMask,[1,1,movsz(3)])),bpthrsh)).*repmat(PhaseMask,[1,1,movsz(3)]));
 end
 
 if make_guessmovie

@@ -43,12 +43,6 @@ function  AVGSUB_movs(filename,do_avg,runningavg,subwidth,offset)
 %     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 %
 
-%rounding subwidth up to the next odd number down, in case you didn't read the
-%instructions
-if subwidth~=(ceil(subwidth/2)*2-1)
-    subwidth=ceil(subwidth/2)*2-1;
-    warning(['subwidth must be an odd integer. It has been reset to subwidth = ',num2str(subwidth)])
-end
 %default offset
 if nargin<4;offset=1000;end
 
@@ -57,11 +51,11 @@ tic;%for measuring the time to run the entire program
 %% Setup
 
 % check if a GPU is available
-try
-    usegpu=parallel.gpu.GPUDevice.isAvailable;
-catch
+% try
+%     usegpu=parallel.gpu.GPUDevice.isAvailable;
+% catch
     usegpu=false;
-end
+% end
 
 [pathstr,fname,ext] = fileparts(filename);
 
