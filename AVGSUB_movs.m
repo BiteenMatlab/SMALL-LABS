@@ -1,4 +1,4 @@
-function  AVGSUB_movs(filename,do_avg,runningavg,subwidth,offset)
+function  bgsub_mov=AVGSUB_movs(filename,mov,goodframe,do_avg,subwidth,offset)
 %% AVGSUB_tiffs
 % updated BPI 1/30/17 This function does average (or median) subtraction
 % on a batch of movies. Currently does the entire movie, I might add
@@ -44,52 +44,23 @@ function  AVGSUB_movs(filename,do_avg,runningavg,subwidth,offset)
 %
 
 %default offset
-if nargin<4;offset=1000;end
+if nargin<5;offset=1000;end
 
 tic;%for measuring the time to run the entire program
 
 %% Setup
+[pathstr,fname] = fileparts(filename);
 
-% check if a GPU is available
-% try
-%     usegpu=parallel.gpu.GPUDevice.isAvailable;
-% catch
-    usegpu=false;
-% end
-
-[pathstr,fname,ext] = fileparts(filename);
-
-if ~strcmp(ext,'.mat')
-    error('Please use a .mat with the variable ''mov''')
-end
-
-matio=matfile(filename,'Writable',false);
-%get the movie size
-movsz=whos(matio,'mov');
-movsz=movsz.size;
-
-%look for a goodframe list, otherwise set all frames as goodframes
-try
-    goodframe=matio.goodframe;
-catch
-    goodframe=true(movsz(3),1);
-end
- 
-if usegpu
-    disp(['Running AVGSUB_movs on a GPU for ',fname])
-    mov=gpuArray(int16(matio.mov));
-else
     disp(['Running AVGSUB_movs for ',fname])
-    mov=int16(matio.mov);
-end
+
 %change the bad frames as determined by the goodframe list to NaNs
 mov(:,:,~goodframe)=NaN;
 
 %% Do the avgsub
 if do_avg
-    bgsub_mov=mov-int16(movmean(mov,subwidth,3,'omitnan'))+offset;
+    bgsub_mov=mov-movmean(mov,subwidth,3,'omitnan')+offset;
 else
-    bgsub_mov=mov-int16(movmedian(mov,subwidth,3,'omitnan'))+offset;
+    bgsub_mov=mov-movmedian(mov,subwidth,3,'omitnan')+offset;
 end
 
 % bgsub_mov(:,:,~gfs)=NaN;
@@ -104,20 +75,13 @@ tictoc=toc;%the time to do the calculations
 
 %%%%Save the movie%%%%
 %rename the bgsub movie for saving
-if usegpu
-    mov=int16(gather(bgsub_mov));
-else
-    mov=int16(bgsub_mov);
-end
-save([pathstr,filesep,fname,'_avgsub.mat'],'mov','goodframe','runningavg','subwidth','offset','tictoc','-v7.3')
+mov=int16(bgsub_mov);
+save([pathstr,filesep,fname,'_avgsub.mat'],'mov','goodframe','do_avg','subwidth','offset','tictoc','-v7.3')
 
 %this is the old tif saving code, commented out for now
 % options.overwrite=true;
 % %save using saveastiff
 % saveastiff(uint16(bgsub_mov), [pathstr,filesep,fname,'_avgsub.tif'],options);
-
-%close the waitbar
-try; close(h1); end
 
 % %save a .txt file with the parameters
 % fileID = fopen([pathstr,filesep,fname,'_avgsub_info.txt'],'w');

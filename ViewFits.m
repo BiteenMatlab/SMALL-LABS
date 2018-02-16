@@ -1,4 +1,5 @@
-function  ViewFits(movfname,fits_fname,circ_D,write_mov,autoscale_on,linewidth)
+function  ViewFits(movfname,mov,movsz,goodframe,fits,circ_D,write_mov,...
+    autoscale_on,linewidth)
 %ViewFits plots or writes a view fits movie using the tiff stack movie
 %specified by mov_fname, and the fits from Subtract_mol_off_frames mat file
 %specficied by fits_fname.
@@ -35,29 +36,15 @@ function  ViewFits(movfname,fits_fname,circ_D,write_mov,autoscale_on,linewidth)
 %     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 %
 
-if nargin<3;circ_D=7;end
-if nargin<4;write_mov=0;end
-if nargin<5;autoscale_on=0;end
-if nargin<6;linewidth=1;end
+if nargin<6;circ_D=7;end
+if nargin<7;write_mov=0;end
+if nargin<8;autoscale_on=0;end
+if nargin<9;linewidth=1;end
 %% setup
-
-%load in fits
-load(fits_fname);
-
-matio=matfile(movfname,'Writable',false);
-%get the movie size
-movsz=whos(matio,'mov');
-movsz=movsz.size;
 
 [pathstr,name,ext] = fileparts(movfname);
 
 %look for a goodframe list, otherwise set all frames as goodframes
-try
-    goodframe=matio.goodframe;
-catch
-    goodframe=true(movsz(3),1);
-end
-
 if write_mov
     v = VideoWriter([pathstr,filesep,name,'_ViewFits.avi'],'Uncompressed AVI');
     open(v);
@@ -65,15 +52,13 @@ if write_mov
     disp(['Making ViewFits for ',name]);
 end
 
-%load in the movie
-mov=double(matio.mov);
 
 %% Make the ViewFits movie
 
 if ~autoscale_on
     frms4scl=100 ;%number of frames for the scaling
     %pull out some frames to find the percentiles of
-    frmscl=mov(:,:,round(linspace(1,movsz(3),frms4scl)));
+    frmscl=double(mov(:,:,round(linspace(1,movsz(3),frms4scl))));
     % the intensity bounds for not autoscaling
     int_bounds=prctile(frmscl(frmscl>0),[.1,99.8]);
 end
@@ -132,6 +117,7 @@ for ii=1:movsz(3)
 end
 if write_mov
     close(v)
+    close(gcf)
 end
 end
 

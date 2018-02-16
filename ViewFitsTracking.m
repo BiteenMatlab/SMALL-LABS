@@ -1,4 +1,5 @@
-function  ViewFitsTracking(movfname,fits_fname,circ_D,write_mov,autoscale_on,linewidth)
+function  ViewFitsTracking(movfname,mov,tracks,circ_D,write_mov...
+    ,autoscale_on,linewidth)
 %ViewFitstTracking plots or writes a view fits movie using the tiff stack movie
 %specified by mov_fname, and the fits from Subtract_mol_off_frames mat file
 %specficied by fits_fname.
@@ -42,22 +43,9 @@ if nargin<5;autoscale_on=0;end
 if nargin<6;linewidth=1;end
 %% setup
 
-%load in fits
-load(fits_fname);
-
-matio=matfile(movfname,'Writable',false);
-%get the movie size
-movsz=whos(matio,'mov');
-movsz=movsz.size;
-
 [pathstr,name,ext] = fileparts(movfname);
 
 %look for a goodframe list, otherwise set all frames as goodframes
-try
-    goodframe=matio.goodframe;
-catch
-    goodframe=true(movsz(3),1);
-end
 
 if write_mov
     v = VideoWriter([pathstr,filesep,name,'_ViewFitsTracking.avi'],'Uncompressed AVI');
@@ -66,8 +54,7 @@ if write_mov
     disp(['Making ViewFits for ',name]);
 end
 
-%load in the movie
-mov=double(matio.mov);
+
 
 %% Make the ViewFits movie
 if ~autoscale_on

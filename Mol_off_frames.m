@@ -1,4 +1,4 @@
-function off_frames=Mol_off_frames(guessfname,dfrlmsz,moloffwin)
+function off_frames=Mol_off_frames(guessfname,guesses,goodframe,movsz,dfrlmsz,moloffwin)
 %% Mol_off_frames
 % Identifies frames in which two localized molecules are within a 2xdfrlmsz
 % sized box of each other using guess results from an average subtracted
@@ -58,24 +58,12 @@ tic;%for measuring the time to run the entire program
 
 [pathstr,fname,~] = fileparts(guessfname);
 %load in the guesses & the movie size
-load(guessfname,'guesses','movsz');
-
-%look for a goodframe list, otherwise set all frames as goodframes
-try
-    load(guessfname,'goodframe');
-catch
-    goodframe=true(movsz(3),1);
-end
-
 %cell array of off frames vectors, for each localization (each row of
 %guesses) a list of frames to include
 off_frames=cell(size(guesses,1),1);
 
-h1=waitbar(0);
-set(findall(h1,'type','text'),'Interpreter','none');
-waitbar(0,h1,['Creating off frames list for ',fname]);
 for ii=1:movsz(3)
-    try; waitbar(ii/movsz(3),h1); end
+
     %number of molecules in the current frame
     frmrows=find(guesses(:,1)==ii);
     nummol=length(frmrows);
@@ -122,7 +110,6 @@ for ii=1:movsz(3)
     end
 end
 
-try;close(h1);end
 
 tictoc=toc;%the time to run the entire program
 

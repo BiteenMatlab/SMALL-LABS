@@ -1,4 +1,4 @@
-function tracks = Tracking(fits_fname,trackparams,savetracks)
+function tracks = Tracking(fits_fname,fits,trackparams,savetracks)
 %% Tracking
 % written BPI 6/7/16
 % This function is just a wrapper for Track_3D2 to interface with the fit
@@ -55,7 +55,6 @@ end
 alpha=-log(trackparams(1))/trackparams(4);
 %% Tracking
 
-load(fits_fname,'fits')
 
 %filling the goodfit for the tracking function array
 goodfits=zeros(sum(fits.goodfit),23);

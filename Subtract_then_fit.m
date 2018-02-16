@@ -1,4 +1,6 @@
-function  Subtract_then_fit(mov_fname,Mol_off_frames_fname,guessfname,MLE_fit,edgedist,stdtol,maxerr,do_avgsub,which_gaussian)
+function  fits=Subtract_then_fit(mov_fname,mov,movsz,...
+    off_frames,moloffwin,guesses,dfrlmsz,MLE_fit,edgedist,stdtol,...
+    maxerr,do_avgsub,which_gaussian,fit_ang,usegpu)
 %% Subtract_mol_off_frames
 % subtracts the average (or median) intensity of off frames for each guess
 % stored in Mol_off_frames_fname.
@@ -80,69 +82,48 @@ function  Subtract_then_fit(mov_fname,Mol_off_frames_fname,guessfname,MLE_fit,ed
 %     it under the terms of the GNU General Public License as published by
 %     the Free Software Foundation, either version 3 of the License, or
 %     (at your option) any later version.
-% 
+%
 %     This program is distributed in the hope that it will be useful,
 %     but WITHOUT ANY WARRANTY; without even the implied warranty of
 %     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 %     GNU General Public License for more details.
-% 
+%
 %     You should have received a copy of the GNU General Public License
 %     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 %
-
+%% Correct these
 if nargin<4;MLE_fit=0;end
-if nargin<5;edgedist=10;end
-if nargin<6;stdtol=1.5;end
-if nargin<7;
+if nargin<8;edgedist=10;end
+if nargin<9;stdtol=1.5;end
+if nargin<10;
     if MLE_fit
         maxerr=0.1;
     else
         maxerr=2;
     end
 end
-if nargin<8;do_avgsub=1;end
-if nargin<9;which_gaussian=1;end
-
-tic;%for measuring the time to run the entire program
+if nargin<11;do_avgsub=1;end
+if nargin<12;which_gaussian=1;end
+if nargin<13;fit_ang=0;end
+if nargin<14;usegpu=1;end
+subnfit=tic;%for measuring the time to run the entire program
 %% Import the data
 
 % check if a GPU is available
-% try
-%     usegpu=parallel.gpu.GPUDevice.isAvailable;
-% catch
-    usegpu=false;
-% end
 
-matio=matfile(mov_fname,'Writable',false);
 [pathstr,fname] = fileparts(mov_fname);
-%get the movie size
-movsz=whos(matio,'mov');
-movsz=movsz.size;
-
 if usegpu
-    mov=gpuArray(int16(matio.mov));
-else
-    mov=int16(matio.mov);
+    usegpu=parallel.gpu.GPUDevice.isAvailable;
 end
-
-%look for a goodframe list, otherwise set all frames as goodframes
-try
-    goodframe=matio.goodframe;
-catch
-    goodframe=true(movsz(3),1);
+if usegpu
+    mov=single(mov);
 end
-
-% load the guesses
-load(guessfname,'guesses','dfrlmsz');
 
 %check that the bgsub is actually happening
 bgsub=1;
-if strcmp(Mol_off_frames_fname,'nobgsub');bgsub=0;end
+if strcmp(off_frames,'nobgsub');bgsub=0;end
 
-if bgsub
-    % load off frames list and some parameters
-    load(Mol_off_frames_fname,'off_frames','moloffwin')
-else
+if ~bgsub
     %set moloffwin to a fifth of the frames, just for memory purposes
     moloffwin=ceil((movsz(3)/5)/2)*2;
     %create filled off_frames cell for simplicity, this isn't used for
@@ -168,203 +149,353 @@ dfD2std=(2*sqrt(2*log(5)));
 %the guessed std
 gesss=dfrlmsz/dfD2std;
 
-%initializing the fits structure
-fits.frame=NaN(size(guesses,1),1);%frame numbers
-fits.row=NaN(size(guesses,1),1);%row coordinate of the fit
-fits.col=NaN(size(guesses,1),1);%column coordinate of the fit
-fits.widthr=NaN(size(guesses,1),1);%standard deviation in the row dimension of the Gaussian fit
-fits.widthc=NaN(size(guesses,1),1);%standard deviation in the column dimension of the Gaussian fit
-fits.ang=NaN(size(guesses,1),1);%angle of asymmetric Gaussian fit
-fits.offset=NaN(size(guesses,1),1);%offset
-fits.amp=NaN(size(guesses,1),1);%amplitude of Gaussian fit
-fits.err=NaN(size(guesses,1),1);%error on fit
-fits.sum=NaN(size(guesses,1),1);%sum of pixels in ROI around guess
-fits.goodfit=false(size(guesses,1),1);%goodfit boolean
-
-%starting the waitbar
-h1=waitbar(0);
-set(findall(h1,'type','text'),'Interpreter','none');
-waitbar(0,h1,['Fitting ',fname]);
-
 %looping through all the guesses
-for ii=1:size(guesses,1)
-    try; waitbar(ii/size(guesses,1),h1); end
-    
-    %current frame number
-    curfrmnum=guesses(ii,1);
-    %putting it into the fits structure
-    fits.frame(ii)=curfrmnum;%frame numbers
-    
-    %determine the frame list of frames to check for the current frame
-    if curfrmnum<=(moloffwin/2)%the first group of frames
-        frmlst=curfrmnum+(-(curfrmnum-1):(moloffwin/2));
-    elseif curfrmnum>=(movsz(3)-moloffwin/2)%the last group of frames
-        frmlst=movsz(3)+(-moloffwin:0);
-    else %all the frames in the middle
-        frmlst=curfrmnum+((-moloffwin/2):(moloffwin/2));
-    end
-    
-    %import appropriate movie frames
-    if frmlst(end)>curframes(end)
-        numnewfrmsend=frmlst(end)-curframes(end);
-        numnewfrmsbeg=frmlst(1)-curframes(1);
-        %new current frames list
-        curframes=frmlst;
-        %new movie frames
-        if numnewfrmsend<(moloffwin+1)
-            curmov=cat(3,curmov(:,:,(numnewfrmsbeg+1):(moloffwin+1)),...
-                mov(:,:,curframes(end)+(-(numnewfrmsend-1):0)));
-        else
-            curmov=mov(:,:,curframes);
-            warning('There was a big jump in the frames without a fit')
+if usegpu
+    dataset=single(NaN((dfrlmsz*2+1)^2,size(guesses,1)));
+    initial_parameters=single(NaN(5,size(guesses,1)));
+    molr=NaN(size(guesses,1),1);
+    molc=NaN(size(guesses,1),1);
+    fits.frame=NaN(size(guesses,1),1);
+    for ii=1:size(guesses,1)
+        
+        %current frame number
+        curfrmnum=guesses(ii,1);
+        %putting it into the fits structure
+        fits.frame(ii)=curfrmnum;%frame numbers
+        
+        %determine the frame list of frames to check for the current frame
+        if curfrmnum<=(moloffwin/2)%the first group of frames
+            frmlst=curfrmnum+(-(curfrmnum-1):(moloffwin/2));
+        elseif curfrmnum>=(movsz(3)-moloffwin/2)%the last group of frames
+            frmlst=movsz(3)+(-moloffwin:0);
+        else %all the frames in the middle
+            frmlst=curfrmnum+((-moloffwin/2):(moloffwin/2));
         end
-        %check to make sure that everything is the right size
-        if curfrmnum>(moloffwin) && (length(curframes)~=(moloffwin+1) || size(curmov,3)~=(moloffwin+1))
-            error('Error determining the correct frames to import')
-        end
-    end
-    
-    %current molecule's position
-    molr=guesses(ii,2);
-    molc=guesses(ii,3);
-    
-    %checking that it's not outside the frame and that off_frames for this
-    %guess isn't empty
-    if (molc>edgedist && molc<(movsz(2)-edgedist) && molr>edgedist && molr<(movsz(1)-edgedist)) && ...
-            (molc>dfrlmsz && molc<(movsz(2)-dfrlmsz) && molr>dfrlmsz && molr<(movsz(1)-dfrlmsz))&& ...
-            ~isempty(off_frames{ii})
-        if bgsub
-            %the average (or median) frame
-            if do_avgsub
-                mean_mov=mean(double(curmov(molr+(-dfrlmsz:dfrlmsz),molc+(-dfrlmsz:dfrlmsz),off_frames{ii}-frmlst(1)+1)),3);         
+        
+        %import appropriate movie frames
+        if frmlst(end)>curframes(end)
+            numnewfrmsend=frmlst(end)-curframes(end);
+            numnewfrmsbeg=frmlst(1)-curframes(1);
+            %new current frames list
+            curframes=frmlst;
+            %new movie frames
+            if numnewfrmsend<(moloffwin+1)
+                curmov=cat(3,curmov(:,:,(numnewfrmsbeg+1):(moloffwin+1)),...
+                    mov(:,:,curframes(end)+(-(numnewfrmsend-1):0)));
             else
-                mean_mov=median(double(curmov(molr+(-dfrlmsz:dfrlmsz),molc+(-dfrlmsz:dfrlmsz),off_frames{ii}-frmlst(1)+1)),3);
+                curmov=mov(:,:,curframes);
+                warning('There was a big jump in the frames without a fit')
             end
-            %the molecule image
-            molim=double(curmov(molr+(-dfrlmsz:dfrlmsz),molc+(-dfrlmsz:dfrlmsz),curfrmnum-frmlst(1)+1));
-            %the subtracted image
-            data=molim-mean_mov;
-        else
-            data=double(curmov(molr+(-dfrlmsz:dfrlmsz),molc+(-dfrlmsz:dfrlmsz),curfrmnum-frmlst(1)+1));
+            %check to make sure that everything is the right size
+            if curfrmnum>(moloffwin) && (length(curframes)~=(moloffwin+1) || size(curmov,3)~=(moloffwin+1))
+                error('Error determining the correct frames to import')
+            end
         end
         
-        %%%% Fitting %%%%
-        plot_on=0;%for debugging purposes only!
-        %the guessed tail intensity of the gaussian
-        gessb=min(data(:));
-        %the guessed amplitude, using the formula in MLEwG
-        gessN=range(data(:))*(4*pi*gesss^2);
-        %fit guess vector
-        params0=[dfrlmsz,dfrlmsz,gesss,gessb,gessN];
+        %current molecule's position
+        molr(ii)=guesses(ii,2);
+        molc(ii)=guesses(ii,3);
         
+        %checking that it's not outside the frame and that off_frames for this
+        %guess isn't empty
+        if (molc(ii)>edgedist && molc(ii)<(movsz(2)-edgedist) && molr(ii)>edgedist && molr(ii)<(movsz(1)-edgedist)) && ...
+                (molc(ii)>dfrlmsz && molc(ii)<(movsz(2)-dfrlmsz) && molr(ii)>dfrlmsz && molr(ii)<(movsz(1)-dfrlmsz))&& ...
+                ~isempty(off_frames{ii})
+            if bgsub
+                %the average (or median) frame
+                if do_avgsub
+                    mean_mov=mean(single(curmov(molr(ii)+(-dfrlmsz:dfrlmsz),molc(ii)+(-dfrlmsz:dfrlmsz),off_frames{ii}-frmlst(1)+1)),3);
+                else
+                    mean_mov=median(single(curmov(molr(ii)+(-dfrlmsz:dfrlmsz),molc(ii)+(-dfrlmsz:dfrlmsz),off_frames{ii}-frmlst(1)+1)),3);
+                end
+                %the molecule image
+                molim=single(curmov(molr(ii)+(-dfrlmsz:dfrlmsz),molc(ii)+(-dfrlmsz:dfrlmsz),curfrmnum-frmlst(1)+1));
+                %the subtracted image
+                data=molim-mean_mov;
+                data=reshape(data,[],1);
+                gessb=min(data(:));
+                %the guessed amplitude, using the formula in MLEwG
+                gessN=range(data(:))*(4*pi*gesss^2);
+                params0=[gessN;dfrlmsz;dfrlmsz;gesss;gessb];
+            else
+                data=single(curmov(molr(ii)+(-dfrlmsz:dfrlmsz),molc(ii)+(-dfrlmsz:dfrlmsz),curfrmnum-frmlst(1)+1));
+                data=reshape(data,[],1);
+                gessb=min(data(:));
+                %the guessed amplitude, using the formula in MLEwG
+                gessN=range(data(:))*(4*pi*gesss^2);
+                params0=[gessN;dfrlmsz;dfrlmsz;gesss;gessb];
+                
+            end
+        end
+        %Make all values positive for MLE fitting
         if MLE_fit
-            %fitting with MLE
-            [paramsF,varianceF] = MLEwG (data,params0,1,plot_on,1);
-            %shifting
-            paramsF([1,2])=paramsF([1,2])+0.5;
-            fit_r=paramsF(1);fit_c=paramsF(2);
-            fit_sd_r=paramsF(3);fit_sd_c=paramsF(3);
-            %recalculating the values based on their equations to match
-            paramsF(5)=paramsF(5)/(2*pi*paramsF(3)^2);
-            if paramsF(4)>=0
-                paramsF(4)=sqrt(paramsF(4));
-            else
-                paramsF(4)=-sqrt(-paramsF(4));
-            end
-            fit_off=paramsF(4);
-            fit_amp=paramsF(5);
-            fit_ang=0;
-            fit_err=varianceF;
-            errbad=varianceF>maxerr;%too much error on fit?
+            dataset(:,ii)=data+4*abs(min(data));
+            params0(5)=min(data)+4*abs(min(data));
+            initial_parameters(:,ii)=params0;
         else
-            %fitting with least squares
-            [fitPars,conf95,~,~,~]=gaussFit(data,'searchBool',0,'nPixels',2*dfrlmsz+1,...
-                'checkVals',0,'ffSwitch',which_gaussian);
-            %converting the variables to match the output of MLEwG, and
-            %arranging for each particular Gaussian fit
-            fit_r=fitPars(1);fit_c=fitPars(2);
-            if which_gaussian==1
-                fit_sd_r=fitPars(3);fit_sd_c=fitPars(3);
-                fit_off=fitPars(5);
-                fit_amp=fitPars(4);                
-                fit_ang=0;
-            elseif which_gaussian==2
-                fit_sd_r=fitPars(3);fit_sd_c=fitPars(4);
-                fit_off=fitPars(6);
-                fit_amp=fitPars(5);
-                fit_ang=0;
-            elseif   which_gaussian==3
-                fit_sd_r=fitPars(4);fit_sd_c=fitPars(5);
-                fit_off=fitPars(7);
-                fit_amp=fitPars(6);
-                fit_ang=fitPars(3);
-            end
-            fit_err=mean(conf95([1,2]));
-            errbad=mean(conf95([1,2]))>maxerr;%too much error on fit?
+            initial_parameters(:,ii)=params0;
+            dataset(:,ii)=data;
         end
-        %Convert back into full frame coordinates, NOTE the -1!
-        act_r=fit_r-dfrlmsz-1+molr;
-        act_c=fit_c-dfrlmsz-1+molc;
-        %The sum(:) of the the data
-        sumsum=sum(data(:));
-        
-        %putting the fit results into the fits structure
-        fits.row(ii)=act_r;%row coordinate of the fit
-        fits.col(ii)=act_c;%column coordinate of the fit
-        fits.widthr(ii)=fit_sd_r;%standard deviation in the row dimension of the Gaussian fit
-        fits.widthc(ii)=fit_sd_c;%standard deviation in the column dimension of the Gaussian fit
-        fits.ang(ii)=fit_ang;%angle of asymmetric Gaussian fit
-        fits.offset(ii)=fit_off;%offset
-        fits.amp(ii)=fit_amp;%amplitude of Gaussian fit
-        fits.err(ii)=fit_err;%error on fit
-        fits.sum(ii)=sumsum;%sum of pixels in ROI around guess
-        
-        %determining if it's a goodfit or not (remember this field was
-        %initialized to false)
-        if (mean([fit_sd_r,fit_sd_c])<=(stdtol*params0(3)) && mean([fit_sd_r,fit_sd_c])>=(params0(3)/stdtol)) && ... %Compare width with diffraction limit
-                ~errbad && ... %too much error on fit?
-                fit_amp<sumsum && ... %the amplitude of the fit shouldn't be bigger than the integral
-                ~any([fit_r,fit_c,fit_amp,sumsum]<0) %none of the fitted parameters should be negative, except the offset!
+    end
+    %%%% Fitting %%%%
+    %fitting with gpufit LSE fitting
+    tolerance = 1e-4;
+    % maximum number of iterations
+    max_n_iterations = 1e4;
+    % estimator id
+    if MLE_fit
+        estimator_id = EstimatorID.MLE;
+    else
+        estimator_id = EstimatorID.LSE;
+    end
+    % model ID
+    if which_gaussian==1
+    model_id = ModelID.GAUSS_2D;
+    params_to_fit=[];
+    elseif which_gaussian==2
+        model_id=ModelID.GAUSS_2D_ROTATED;
+        initial_parameters(6,:)=fit_ang;
+        initial_parameters(5:7,:)=initial_parameters(4:6,:);
+    params_to_fit=[1,1,1,1,1,1,0]';  
+    elseif which_gaussian==3
+        model_id=ModelID.GAUSS_2D_ROTATED;
+        params_to_fit=[];
+        initial_parameters(6,:)=fit_ang;
+        initial_parameters(5:7,:)=initial_parameters(4:6,:);
+    end
+    [parameters, states, chi_squares,~,~] = gpufit(dataset, [], ...
+        model_id, initial_parameters, tolerance, max_n_iterations, params_to_fit, estimator_id, []);
+    
+    fits.amp=parameters(1,:)';
+    if MLE_fit
+        fits.offset=(parameters(5,:)-initial_parameters(5,:))';
+    else
+        fits.offset=parameters(5,:)';
+    end
+    fits.row=parameters(2,:)'-dfrlmsz+molr;
+    fits.col=parameters(3,:)'-dfrlmsz+molc;
+    fits.widthr=parameters(4,:)';
+    fits.widthc=parameters(4,:)';
+    if which_gaussian==1
+        fits.ang=zeros(size(guesses,1),1);
+    else
+        fits.ang=parameters(6,:);
+    end
+    fits.err=(1-chi_squares./sum((dataset-mean(dataset,1)).^2))';
+    if MLE_fit
+        errbad=fits.err<0.10|states~=1;
+    else
+        errbad=fits.err<0.10;
+    end
+    fits.sum=sum(dataset,1)';
+    %determining if it's a goodfit or not (remember this field was
+    %initialized to false)
+    fits.goodfit=false(size(guesses,1),1);
+    for ii=1:size(guesses,1)
+        if (mean([fits.widthr(ii),fits.widthc(ii)])<=(stdtol*gesss) && mean([fits.widthr(ii),fits.widthc(ii)])>=(gesss/stdtol)) && ... %Compare width with diffraction limit
+                ~errbad(ii) && ... %too much error on fit?
+                fits.amp(ii)<fits.sum(ii) && ... %the amplitude of the fit shouldn't be bigger than the integral
+                ~any([fits.row(ii),fits.col(ii),fits.amp(ii),fits.sum(ii)]<0) %none of the fitted parameters should be negative, except the offset!
             
             fits.goodfit(ii)=true;%goodfit boolean
         end
+    end
+    fits.states=states';
+    %plotting for debugging/tests
+    
+    
+    
+else
+    %initializing the fits structure
+    fits.frame=NaN(size(guesses,1),1);%frame numbers
+    fits.row=NaN(size(guesses,1),1);%row coordinate of the fit
+    fits.col=NaN(size(guesses,1),1);%column coordinate of the fit
+    fits.widthr=NaN(size(guesses,1),1);%standard deviation in the row dimension of the Gaussian fit
+    fits.widthc=NaN(size(guesses,1),1);%standard deviation in the column dimension of the Gaussian fit
+    fits.ang=NaN(size(guesses,1),1);%angle of asymmetric Gaussian fit
+    fits.offset=NaN(size(guesses,1),1);%offset
+    fits.amp=NaN(size(guesses,1),1);%amplitude of Gaussian fit
+    fits.err=NaN(size(guesses,1),1);%error on fit
+    fits.sum=NaN(size(guesses,1),1);%sum of pixels in ROI around guess
+    fits.goodfit=false(size(guesses,1),1);%goodfit boolean
+    
+    for ii=1:size(guesses,1)
+        try; waitbar(ii/size(guesses,1),h1); end
         
-        %plotting for debugging/tests
-        if plot_on
-            h12=figure(12);
-            subplot(1,3,1)
-            imshow(mean_mov,[])
-            title('Mean BG')
-            subplot(1,3,2)
-            imshow(molim,[])
-            title('Raw Molecule')
-            subplot(1,3,3)
-            imshow(data,[])
-            title('BGSUB')
-            annotation('textbox', [0 0.9 1 0.1], ...
-                'String', ['Frame # ',num2str(curfrmnum),'   Guess # ',num2str(ii)], ...
-                'EdgeColor', 'none', ...
-                'HorizontalAlignment', 'center')
+        %current frame number
+        curfrmnum=guesses(ii,1);
+        %putting it into the fits structure
+        fits.frame(ii)=curfrmnum;%frame numbers
+        
+        %determine the frame list of frames to check for the current frame
+        if curfrmnum<=(moloffwin/2)%the first group of frames
+            frmlst=curfrmnum+(-(curfrmnum-1):(moloffwin/2));
+        elseif curfrmnum>=(movsz(3)-moloffwin/2)%the last group of frames
+            frmlst=movsz(3)+(-moloffwin:0);
+        else %all the frames in the middle
+            frmlst=curfrmnum+((-moloffwin/2):(moloffwin/2));
+        end
+        
+        %import appropriate movie frames
+        if frmlst(end)>curframes(end)
+            numnewfrmsend=frmlst(end)-curframes(end);
+            numnewfrmsbeg=frmlst(1)-curframes(1);
+            %new current frames list
+            curframes=frmlst;
+            %new movie frames
+            if numnewfrmsend<(moloffwin+1)
+                curmov=cat(3,curmov(:,:,(numnewfrmsbeg+1):(moloffwin+1)),...
+                    mov(:,:,curframes(end)+(-(numnewfrmsend-1):0)));
+            else
+                curmov=mov(:,:,curframes);
+                warning('There was a big jump in the frames without a fit')
+            end
+            %check to make sure that everything is the right size
+            if curfrmnum>(moloffwin) && (length(curframes)~=(moloffwin+1) || size(curmov,3)~=(moloffwin+1))
+                error('Error determining the correct frames to import')
+            end
+        end
+        
+        %current molecule's position
+        molr=guesses(ii,2);
+        molc=guesses(ii,3);
+        
+        %checking that it's not outside the frame and that off_frames for this
+        %guess isn't empty
+        if (molc>edgedist && molc<(movsz(2)-edgedist) && molr>edgedist && molr<(movsz(1)-edgedist)) && ...
+                (molc>dfrlmsz && molc<(movsz(2)-dfrlmsz) && molr>dfrlmsz && molr<(movsz(1)-dfrlmsz))&& ...
+                ~isempty(off_frames{ii})
+            if bgsub
+                %the average (or median) frame
+                if do_avgsub
+                    mean_mov=mean(double(curmov(molr+(-dfrlmsz:dfrlmsz),molc+(-dfrlmsz:dfrlmsz),off_frames{ii}-frmlst(1)+1)),3);
+                else
+                    mean_mov=median(double(curmov(molr+(-dfrlmsz:dfrlmsz),molc+(-dfrlmsz:dfrlmsz),off_frames{ii}-frmlst(1)+1)),3);
+                end
+                %the molecule image
+                molim=double(curmov(molr+(-dfrlmsz:dfrlmsz),molc+(-dfrlmsz:dfrlmsz),curfrmnum-frmlst(1)+1));
+                %the subtracted image
+                data=molim-mean_mov;
+            else
+                data=double(curmov(molr+(-dfrlmsz:dfrlmsz),molc+(-dfrlmsz:dfrlmsz),curfrmnum-frmlst(1)+1));
+            end
+            %%%% Fitting %%%%
+            plot_on=0;%for debugging purposes only!
+            %the guessed tail intensity of the gaussian
+            gessb=min(data(:));
+            %the guessed amplitude, using the formula in MLEwG
+            gessN=range(data(:))*(4*pi*gesss^2);
+            %fit guess vector
+            params0=[dfrlmsz,dfrlmsz,gesss,gessb,gessN];
             
-            keyboard
-            close(h12)
+            if MLE_fit
+                %fitting with MLE
+                [paramsF,varianceF] = MLEwG (data,params0,1,plot_on,1);
+                %shifting
+                paramsF([1,2])=paramsF([1,2])+0.5;
+                fit_r=paramsF(1);fit_c=paramsF(2);
+                fit_sd_r=paramsF(3);fit_sd_c=paramsF(3);
+                %recalculating the values based on their equations to match
+                paramsF(5)=paramsF(5)/(2*pi*paramsF(3)^2);
+                if paramsF(4)>=0
+                    paramsF(4)=sqrt(paramsF(4));
+                else
+                    paramsF(4)=-sqrt(-paramsF(4));
+                end
+                fit_off=paramsF(4);
+                fit_amp=paramsF(5);
+                fit_ang=0;
+                fit_err=varianceF;
+                errbad=varianceF>maxerr;%too much error on fit?
+            else
+                %fitting with least squares
+                [fitPars,conf95,~,~,~]=gaussFit(data,'searchBool',0,'nPixels',2*dfrlmsz+1,...
+                    'checkVals',0,'ffSwitch',which_gaussian);
+                %converting the variables to match the output of MLEwG, and
+                %arranging for each particular Gaussian fit
+                fit_r=fitPars(1);fit_c=fitPars(2);
+                if which_gaussian==1
+                    fit_sd_r=fitPars(3);fit_sd_c=fitPars(3);
+                    fit_off=fitPars(5);
+                    fit_amp=fitPars(4);
+                    fit_ang=0;
+                elseif which_gaussian==2
+                    fit_sd_r=fitPars(3);fit_sd_c=fitPars(4);
+                    fit_off=fitPars(6);
+                    fit_amp=fitPars(5);
+                    fit_ang=0;
+                elseif   which_gaussian==3
+                    fit_sd_r=fitPars(4);fit_sd_c=fitPars(5);
+                    fit_off=fitPars(7);
+                    fit_amp=fitPars(6);
+                    fit_ang=fitPars(3);
+                end
+                fit_err=mean(conf95([1,2]));
+                errbad=mean(conf95([1,2]))>maxerr;%too much error on fit?
+            end
+            %Convert back into full frame coordinates, NOTE the -1!
+            act_r=fit_r-dfrlmsz-1+molr;
+            act_c=fit_c-dfrlmsz-1+molc;
+            %The sum(:) of the the data
+            sumsum=sum(data(:));
+            
+            %putting the fit results into the fits structure
+            fits.row(ii)=act_r;%row coordinate of the fit
+            fits.col(ii)=act_c;%column coordinate of the fit
+            fits.widthr(ii)=fit_sd_r;%standard deviation in the row dimension of the Gaussian fit
+            fits.widthc(ii)=fit_sd_c;%standard deviation in the column dimension of the Gaussian fit
+            fits.ang(ii)=fit_ang;%angle of asymmetric Gaussian fit
+            fits.offset(ii)=fit_off;%offset
+            fits.amp(ii)=fit_amp;%amplitude of Gaussian fit
+            fits.err(ii)=fit_err;%error on fit
+            fits.sum(ii)=gather(sumsum);%sum of pixels in ROI around guess
+            
+            %determining if it's a goodfit or not (remember this field was
+            %initialized to false)
+            if (mean([fit_sd_r,fit_sd_c])<=(stdtol*params0(3)) && mean([fit_sd_r,fit_sd_c])>=(params0(3)/stdtol)) && ... %Compare width with diffraction limit
+                    ~errbad && ... %too much error on fit?
+                    fit_amp<sumsum && ... %the amplitude of the fit shouldn't be bigger than the integral
+                    ~any([fit_r,fit_c,fit_amp,sumsum]<0) %none of the fitted parameters should be negative, except the offset!
+                
+                fits.goodfit(ii)=true;%goodfit boolean
+            end
+            
+            %plotting for debugging/tests
+            if plot_on
+                h12=figure(12);
+                subplot(1,3,1)
+                imshow(mean_mov,[])
+                title('Mean BG')
+                subplot(1,3,2)
+                imshow(molim,[])
+                title('Raw Molecule')
+                subplot(1,3,3)
+                imshow(data,[])
+                title('BGSUB')
+                annotation('textbox', [0 0.9 1 0.1], ...
+                    'String', ['Frame # ',num2str(curfrmnum),'   Guess # ',num2str(ii),' R^2=',num2str(r_square)], ...
+                    'EdgeColor', 'none', ...
+                    'HorizontalAlignment', 'center')
+                
+                keyboard
+                try
+                    close(h12)
+                catch
+                end
+            end
         end
     end
 end
-
-tictoc=toc;%the time to run the entire program
+tictoc=toc(subnfit);%the time to run the entire program
+disp([num2str(tictoc),' s to run Subtract_then_fit'])
 %save the data
 if bgsub
     fname=[pathstr,filesep,fname,'_AccBGSUB_fits.mat'];
 else
     fname=[pathstr,filesep,fname,'_fits.mat'];
 end
-save(fname,'fits','mov_fname','Mol_off_frames_fname','guessfname',...
-    'MLE_fit','stdtol','maxerr','dfrlmsz','movsz','moloffwin','tictoc',...
-    'do_avgsub','which_gaussian')
+save(fname,'fits','MLE_fit','stdtol','maxerr','dfrlmsz','movsz','moloffwin',...
+'tictoc','do_avgsub','which_gaussian')
 
-try
-    close(h1)
-end
 end
 

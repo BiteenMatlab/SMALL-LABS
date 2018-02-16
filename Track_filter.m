@@ -1,4 +1,4 @@
-function trk_filt= Track_filter(fits_fname,append_vec,trackparams,savetracks)
+function trk_filt= Track_filter(fits_fname,fits,append_vec,trackparams,savetracks)
 %% Track_filter
 % written BPI 6/7/16
 % Track_filter is a function to filter based on tracking. Currently just
@@ -38,8 +38,8 @@ function trk_filt= Track_filter(fits_fname,append_vec,trackparams,savetracks)
 %     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 %
 
-if nargin<2;append_vec=0;end
-if nargin<4;savetracks=0;end
+if nargin<3;append_vec=0;end
+if nargin<5;savetracks=0;end
 
 %% Default tracking parameters
 if nargin<3
@@ -61,7 +61,6 @@ if nargin<3
 end
 
 %% Track it
-load(fits_fname,'fits')
 
 %the logical vector of whether or not the fit passed the tracking filtering
 trk_filt=false(size(fits.frame,1),1);
@@ -69,7 +68,7 @@ trk_filt=false(size(fits.frame,1),1);
 [~,fname] = fileparts(fits_fname);
 disp(['Tracking ',fname]);
 
-tracks = Tracking(fits_fname,trackparams,savetracks);
+tracks = Tracking(fits_fname,fits,trackparams,savetracks);
 if ~isempty(tracks)
     save(fits_fname,'tracks','trackparams','-append')
     

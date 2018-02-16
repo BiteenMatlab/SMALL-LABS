@@ -1,4 +1,5 @@
-function guesses=Guessing(mov_fname,dfrlmsz,bpthrsh,egdesz,pctile_frame,debugmode,mask_fname,make_guessmovie)
+function guesses=Guessing(mov_fname,mov,movsz,goodframe,dfrlmsz,...
+    bpthrsh,egdesz,pctile_frame,debugmode,mask_fname,make_guessmovie)
 %% Guessing
 % make a list of guesses for sinlge molecules. Using a bandpass filter to
 % filter pixel noise first, then uses bwpropfilt to find blobs of the
@@ -64,12 +65,12 @@ function guesses=Guessing(mov_fname,dfrlmsz,bpthrsh,egdesz,pctile_frame,debugmod
 %
 %
 % default values
-if nargin<3;bpthrsh=90;end
-if nargin<4;egdesz=dfrlmsz;end
-if nargin<5;pctile_frame=1;end
-if nargin<6;debugmode=0;end
-if nargin<7;mask_fname=[];end
-if nargin<8;make_guessmovie=0;end
+if nargin<6;bpthrsh=90;end
+if nargin<7;egdesz=dfrlmsz;end
+if nargin<8;pctile_frame=1;end
+if nargin<9;debugmode=0;end
+if nargin<10;mask_fname=[];end
+if nargin<11;make_guessmovie=0;end
 
 %did you not set dfrlmsz to an integer?
 if dfrlmsz~=round(dfrlmsz);error('dfrlmsz must be an integer');end
@@ -81,31 +82,8 @@ tic;%for measuring the time to run the entire program
 % last updated 8/12/16 BPI
 %% Setup
 
-% check if a GPU is available
-% try
-%     usegpu=parallel.gpu.GPUDevice.isAvailable;
-% catch
-    usegpu=false;
-% end
-
-matio=matfile(mov_fname,'Writable',false);
 [pathstr,fname] = fileparts(mov_fname);
-%get the movie size
-movsz=whos(matio,'mov');
-movsz=movsz.size;
-
-if usegpu
-    mov=gpuArray(int16(matio.mov));
-else
-    mov=int16(matio.mov);
-end
-
 %look for a goodframe list, otherwise set all frames as goodframes
-try
-    goodframe=matio.goodframe;
-catch
-    goodframe=true(movsz(3),1);
-end
 
 %intializing the guess indices cell array
 guesses=zeros(1,3);
@@ -126,18 +104,11 @@ if ~isempty(mask_fname)
 else
     PhaseMask=true(movsz([1,2]));
 end
-if usegpu
-    PhaseMask=gpuArray(PhaseMask);
-end
 
 %using the percentiles on the entire movie
 if ~pctile_frame
     %initializing the bandpassed movie
-    if usegpu
-        bimgmov=zeros(movsz,'gpuArray');
-    else
         bimgmov=zeros(movsz);
-    end
     goodfrmmov=false(movsz);
     %looping through and making the bandpassed movie
     for ll=1:movsz(3)
@@ -145,11 +116,8 @@ if ~pctile_frame
             goodfrmmov(:,:,ll)=true;
             %padding the current frame to avoid the Fourier ringing associated
             %with the edges of the image
-            if usegpu
-                curfrm=padarray(mov(:,:,ll),[pdsz,pdsz],'symmetric');
-            else
-                curfrm=padarray(mov(:,:,ll),[pdsz,pdsz],'symmetric');
-            end
+            curfrm=padarray(mov(:,:,ll),[pdsz,pdsz],'symmetric');
+            
             %bandpass parameters
             LP=2;%lnoise, should always be 1
             HP=round(dfrlmsz*1.5);%lobject, set by diffraction limit
@@ -175,22 +143,18 @@ if make_guessmovie
     disp(['Making guesses movie for ',fname]);
 end
 
-h1=waitbar(0);
-set(findall(h1,'type','text'),'Interpreter','none');
-waitbar(0,h1,['Making guesses for ',fname]);
+
 
 for ll=1:movsz(3)
-    try;waitbar(ll/movsz(3),h1);end
+
     if goodframe(ll)
         %using the percentile on each frame
         if pctile_frame
             %padding the current frame to avoid the Fourier ringing associated
             %with the edges of the image
-            if usegpu
+            
                 curfrm=mov(:,:,ll);
-            else
-                curfrm=mov(:,:,ll);
-            end            
+          
             curfrmbp=padarray(curfrm,[pdsz,pdsz],'symmetric');
             
             %bandpass parameters
@@ -252,9 +216,7 @@ tictoc=toc;%the time to run the entire program
 save([pathstr,filesep,name,'_guesses.mat'],'guesses','goodframe','dfrlmsz','egdesz','pctile_frame','bpthrsh',...
     'movsz','tictoc','mask_fname');
 
-try
-    close(h1)%closing the waitbar
-end
+
 
 end
 
