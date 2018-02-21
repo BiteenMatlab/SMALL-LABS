@@ -40,6 +40,7 @@ The code not written by BPI:
 *gaussFit* by David J Rowland  
 *Track_3D2* by David J Rowland   
 *hungarian* by Yi Cao
+*gpufit* by Adrian Przybylski, Björn Thiel, Jan Keller-Findeisen, Bernd Stock, and Mark Bates
 
 ## License
 
