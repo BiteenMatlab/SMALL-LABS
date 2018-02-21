@@ -44,8 +44,6 @@ function  bgsub_mov=AVGSUB_movs(filename,mov,goodframe,do_avg,subwidth,offset)
 %
 
 %default offset
-if nargin<5;offset=1000;end
-
 tic;%for measuring the time to run the entire program
 
 %% Setup

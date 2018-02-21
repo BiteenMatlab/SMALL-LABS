@@ -35,14 +35,9 @@ function  ViewFits(movfname,mov,trk_filt,movsz,goodframe,fits,circ_D,write_mov,.
 %     You should have received a copy of the GNU General Public License
 %     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 %
-
-if nargin<6;circ_D=7;end
-if nargin<7;write_mov=0;end
-if nargin<8;autoscale_on=0;end
-if nargin<9;linewidth=1;end
 %% setup
 
-[pathstr,name,ext] = fileparts(movfname);
+[pathstr,name] = fileparts(movfname);
 
 %look for a goodframe list, otherwise set all frames as goodframes
 if write_mov

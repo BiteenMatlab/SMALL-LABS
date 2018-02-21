@@ -64,14 +64,7 @@ function guesses=Guessing(mov_fname,mov,movsz,goodframe,dfrlmsz,...
 %     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 %
 %
-% default values
-if nargin<6;bpthrsh=90;end
-if nargin<7;egdesz=dfrlmsz;end
-if nargin<8;pctile_frame=1;end
-if nargin<9;debugmode=0;end
-if nargin<10;mask_fname=[];end
-if nargin<11;make_guessmovie=0;end
-
+% 
 %did you not set dfrlmsz to an integer?
 if dfrlmsz~=round(dfrlmsz);error('dfrlmsz must be an integer');end
 

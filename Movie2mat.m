@@ -105,8 +105,6 @@ for ii=1:numel(dlocs)
         %filesize to 90% of the available memory
         numchunks=floor(fmem/(0.9*curmem))+1;
         
-        toc;
-        
         %% go through and import the different filetypes
         %if it's a .tif stack use TIFFStack
         if strcmp(exts{ii},'.tif') || strcmp(exts{ii},'.tiff')
