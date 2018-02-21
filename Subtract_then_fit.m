@@ -329,7 +329,15 @@ else
     fits.sum=sum(dataset,1)';%sum of pixels in ROI around guess
     fits.goodfit=false(size(guesses,1),1);%goodfit boolean
     sumsum=fits.sum;
-    for ii=1:size(guesses,1) %Trying to make run with parfor, but it gets stuck.
+    fit_sd_r=NaN(size(guesses,1),1);
+    fit_sd_c=NaN(size(guesses,1),1);
+    fit_off=NaN(size(guesses,1),1);
+    fit_amp=NaN(size(guesses,1),1);
+    fit_err=NaN(size(guesses,1),1);
+    act_r=NaN(size(guesses,1),1);
+    fit_ang=NaN(size(guesses,1),1);
+    act_c=NaN(size(guesses,1),1);
+    parfor ii=1:size(guesses,1) %Trying to make run with parfor, but it gets stuck.
         if MLE_fit
             %fitting with MLE
             [paramsF,varianceF] = MLEwG (reshape(dataset(:,ii),[2*dfrlmsz+1,2*dfrlmsz+1]),initial_parameters(:,ii)',1,plot_on,1);
@@ -392,14 +400,14 @@ else
     
     
     %putting the fit results into the fits structure
-    fits.row=act_r';%row coordinate of the fit
-    fits.col=act_c';%column coordinate of the fit
-    fits.widthr=fit_sd_r';%standard deviation in the row dimension of the Gaussian fit
-    fits.widthc=fit_sd_c';%standard deviation in the column dimension of the Gaussian fit
-    fits.ang=fit_ang';%angle of asymmetric Gaussian fit
-    fits.offset=fit_off';%offset
-    fits.amp=fit_amp';%amplitude of Gaussian fit
-    fits.err=fit_err';%error on fit
+    fits.row=act_r;%row coordinate of the fit
+    fits.col=act_c;%column coordinate of the fit
+    fits.widthr=fit_sd_r;%standard deviation in the row dimension of the Gaussian fit
+    fits.widthc=fit_sd_c;%standard deviation in the column dimension of the Gaussian fit
+    fits.ang=fit_ang;%angle of asymmetric Gaussian fit
+    fits.offset=fit_off;%offset
+    fits.amp=fit_amp;%amplitude of Gaussian fit
+    fits.err=fit_err;%error on fit
     fits.goodfit=goodfit';
     %determining if it's a goodfit or not (remember this field was
     %initialized to false)
