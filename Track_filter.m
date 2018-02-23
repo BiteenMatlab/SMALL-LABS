@@ -1,4 +1,4 @@
-function trk_filt= Track_filter(fits_fname,fits,append_vec,trackparams,savetracks)
+function [trk_filt,tracks]= Track_filter(fits_fname,fits,append_vec,trackparams,savetracks)
 %% Track_filter
 % written BPI 6/7/16
 % Track_filter is a function to filter based on tracking. Currently just

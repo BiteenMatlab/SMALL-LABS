@@ -234,7 +234,7 @@ elseif exist(file_or_directory_name)==2
     %if it's a .txt file then assume it's a list of filenames
     if strcmp(ext,'.txt')
         %open the file for reading
-        fid=fopen(file_or_directory_name,'r');        
+        fid=fopen(file_or_directory_name,'r');
         %initializing loop variables
         linetxt='foobar';
         ii=0;
@@ -266,7 +266,7 @@ warning('off','MATLAB:load:variableNotFound');
 
 % try to add gpufit to path
 try
-   addpath(genpath('gpufit')) 
+    addpath(genpath('gpufit'))
 end
 
 h2=waitbar(0);
@@ -439,14 +439,14 @@ for ii=1:numel(dlocs)
                 end
             end
             if params.bgsub
-                trk_filt=Track_filter([dlocs{ii},filesep,dnames{ii},'_AccBGSUB_fits.mat'],fits,...
+                [trk_filt,tracks]=Track_filter([dlocs{ii},filesep,dnames{ii},'_AccBGSUB_fits.mat'],fits,...
                     1,params.trackparams,params.savetracks);
             else
-                trk_filt=Track_filter([dlocs{ii},filesep,dnames{ii},'_fits.mat'],fits,...
+                [trk_filt,tracks]=Track_filter([dlocs{ii},filesep,dnames{ii},'_fits.mat'],fits,...
                     1,params.trackparams,params.savetracks);
             end
         else
-            trk_filt=Track_filter([dlocs{ii},filesep,dnames{ii},'_fits.mat'],fits,...
+            [trk_filt,tracks]=Track_filter([dlocs{ii},filesep,dnames{ii},'_fits.mat'],fits,...
                 1,params.trackparams,params.savetracks);
         end
     end
@@ -456,82 +456,70 @@ for ii=1:numel(dlocs)
     % mode, to look at the results. Outpits an avi file called
     % moviename_ViewFits.avi
     if params.makeViewFits
-        try; waitbar((7*ii)/numel(dlocs)/7,h2,{['Making Viewfits ',dnames{ii}],'Overall Progress'}); end        
+        try; waitbar((7*ii)/numel(dlocs)/7,h2,{['Making Viewfits ',dnames{ii}],'Overall Progress'}); end
         if params.bgsub
-            if ~exist('trk_filt','var')
-            try; load([dlocs{ii},filesep,dnames{ii},'_AccBGSUB_fits.mat'],'trk_filt'); end
-            else
-                    trk_filt=[];
-                end
+            if ~exist('fits','var')
+                try; load([dlocs{ii},filesep,dnames{ii},'_AccBGSUB_fits.mat'],'fits','trk_filt'); end
             end
-        end
+            if ~exist('trk_filt','var')
+                try; load([dlocs{ii},filesep,dnames{ii},'_AccBGSUB_fits.mat'],'fits','trk_filt'); end
+            end
+            if ~exist('trk_filt','var')
+                trk_filt=[];
+            end
+            if ~exist('tracks','var')
+                try; load([dlocs{ii},filesep,dnames{ii},'_AccBGSUB_fits.mat'],'fits','tracks'); end
+            end
+            if ~exist('bgsub_mov','var')
+                try; bgsubmov=load([dlocs{ii},filesep,dnames{ii},'_avgsub.mat'],'mov'); end
+                bgsub_mov=single(bgsubmov.mov);
+                clear bgsubmov
+            end
             if params.orig_movie
-                if ~exist('fits','var')
-                    try
-                        load([dlocs{ii},filesep,dnames{ii},'_AccBGSUB_fits.mat'],'fits')
-                    catch
-                        warning('Fitting file was without AccBGSUB, but bgsub was true.\r\t\t Either run new instance from beginning or continue without bgsub.',1)
-                        keyboard
-                        params.bgsub=0;
-                        load([dlocs{ii},filesep,dnames{ii},'_fits.mat'],'fits')
-                    end
-                end
                 if ~params.trackingVF
                     ViewFits([dlocs{ii},filesep,dnames{ii},'.mat'],...
-                        mov,trk_filt,movsz,goodframe,fits,params.circ_D,params.write_mov,...
-                        params.autoscale_on,params.linewidth)
+                        mov,trk_filt,movsz,goodframe,fits,...
+                        params.circ_D,params.write_mov,params.autoscale_on,params.linewidth)
                 else
                     ViewFitsTracking([dlocs{ii},filesep,dnames{ii},'.mat'],...
-                        mov,trk_filt,params.circ_D,params.write_mov,...
-                        params.autoscale_on,params.linewidth)
+                        mov,movsz,tracks,...
+                        params.circ_D,params.write_mov,params.autoscale_on,params.linewidth)
                 end
             else
-                if ~exist('fits','var')
-                    try
-                        load([dlocs{ii},filesep,dnames{ii},'_AccBGSUB_fits.mat'],'fits')
-                    catch
-                        warning('Fitting file was without AccBGSUB, but bgsub was true.\r\t\t Either run new instance from beginning or continue without bgsub.',1)
-                        keyboard
-                        params.bgsub=0;
-                        load([dlocs{ii},filesep,dnames{ii},'_fits.mat'],'fits')
-                        bgsub_mov=mov;
-                    end
-                    if params.bgsub
-                        if ~exist('bgsub_mov','var')
-                            indata=load([dlocs{ii},filesep,dnames{ii},'_avgsub.mat'],'mov','dfrlmsz');
-                            bgsub_mov=indata.mov;
-                            dfrlmsz=indata.dfrlmsz;
-                        end
-                    end
-                end
                 if ~params.trackingVF
                     ViewFits([dlocs{ii},filesep,dnames{ii},'_avgsub.mat'],...
-                        bgsub_mov,trk_filt,movsz,goodframe,fits,params.circ_D,params.write_mov,...
-                        params.autoscale_on,params.linewidth)
+                        bgsub_mov,trk_filt,movsz,goodframe,fits,...
+                        params.circ_D,params.write_mov,params.autoscale_on,params.linewidth)
                 else
                     ViewFitsTracking([dlocs{ii},filesep,dnames{ii},'_avgsub.mat'],...
-                        bgsub_mov,trk_filt,movsz,params.circ_D,params.write_mov,...
-                        params.autoscale_on,params.linewidth)
+                        bgsub_mov,movsz,tracks,...
+                        params.circ_D,params.write_mov,params.autoscale_on,params.linewidth)
                 end
             end
         else
             if ~exist('fits','var')
                 try
-                    load([dlocs{ii},filesep,dnames{ii},'_fits.mat'],'fits')
+                    load([dlocs{ii},filesep,dnames{ii},'_fits.mat'],'fits','trk_filt');
                 catch
-                    load([dlocs{ii},filesep,dnames{ii},'_AccBGSUB_fits_fits.mat'],'fits')
+                    error('Check bgsub')
                 end
             end
+            if ~exist('trk_filt','var')
+                try; load([dlocs{ii},filesep,dnames{ii},'_fits.mat'],'fits','trk_filt'); end
+            end
+            if ~exist('trk_filt','var')
+                trk_filt=[];
+            end
             if ~params.trackingVF
-                ViewFits([dlocs{ii},filesep,dnames{ii},'.mat'],mov,trk_filt,movsz,goodframe,fits,params.circ_D,params.write_mov,...
-                    params.autoscale_on,params.linewidth)
+                ViewFits([dlocs{ii},filesep,dnames{ii},'.mat'],...
+                    mov,trk_filt,movsz,goodframe,fits,...
+                    params.circ_D,params.write_mov,params.autoscale_on,params.linewidth)
             else
                 ViewFitsTracking([dlocs{ii},filesep,dnames{ii},'.mat'],...
-                    mov,trk_filt,movsz,params.circ_D,...
-                    params.write_mov,params.autoscale_on,params.linewidth)
+                    mov,movsz,tracks,...
+                    params.circ_D,params.write_mov,params.autoscale_on,params.linewidth)
             end
         end
-        
     end
 end
 try
@@ -545,6 +533,6 @@ warning('on','MATLAB:load:variableNotFound')
 
 % try to remove gpufit path
 try
-   rmpath(genpath('gpufit')) 
+    rmpath(genpath('gpufit'))
 end
 end
