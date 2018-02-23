@@ -1,4 +1,4 @@
-function SMALLLABS_main(directoryname,dfrlmsz,avgwin,moloffwin,varargin)
+function SMALLLABS_main(file_or_directory_name,dfrlmsz,avgwin,moloffwin,varargin)
 %% SMALLLABS_main
 %
 %%%% If you obtained this code from anywhere other than the Biteen Lab
@@ -86,7 +86,7 @@ function SMALLLABS_main(directoryname,dfrlmsz,avgwin,moloffwin,varargin)
 % name value pair (e.g., 'bpthrsh',83). Please see the user guide for
 % details about the meaning and function of these parameters. The default
 % parameter values are:
-try; parpool; end;
+
 %%% Actions %%%
 % Do background subtraction
 params.bgsub = 1;
@@ -127,7 +127,7 @@ params.make_guessmovie = false;
 params.MLE_fit = false;
 % Goodfit parameters. See Subtract_mol_off_frames for the details
 params.stdtol = 1.5;
-params.maxerr = 2; %if you change this please also change the if statement after the next loop
+params.maxerr = 0.10; %if you change this please also change the if statement after the next loop
 % subtract the mean of off frames? If not use median
 params.do_avgsub = true;
 % Which Gaussian function to fit to when using LSQ fitting? 1. symmetric,
@@ -169,7 +169,6 @@ params.autoscale_on = false;
 params.trackingVF = false;
 
 %% Evaluating the inputs
-%This section nearly verbatim from DJR
 
 paramsnames=fieldnames(params);
 
@@ -210,24 +209,65 @@ if params.bgsub
 end
 
 %% Select the movies
-%This section nearly verbatim from DJR
 
-%Select movies with uigetfile. If you make an error in specifying the
-%directory, it opens in the current directory.
-disp('Select the movie(s)')
+% check if it's a directory or a file
+if exist(file_or_directory_name)==7
+    %Select movies with uigetfile. If you make an error in specifying the
+    %directory, it opens in the current directory.
+    disp('Select the movie(s)')
+    try
+        [datalist,dataloc,findex]=uigetfile([file_or_directory_name,filesep,'*.*'],'multiselect','on');
+    catch
+        curdir=pwd;
+        [datalist,dataloc,findex]=uigetfile([curdir,filesep,'*.*'],'multiselect','on');
+    end
+    if findex==0
+        error('No movies selected')
+    end
+    %convert to a list of directories and filenames
+    if ~iscell(datalist); datalist={datalist}; end
+    for ii=1:numel(datalist); datalist{ii}=[dataloc datalist{ii}]; end
+    [dlocs,dnames,exts]=cellfun(@fileparts,datalist,'uniformoutput',false);
+elseif exist(file_or_directory_name)==2
+    %get the directory and filename, and format into the cell list as above
+    [dname,fname,ext] = fileparts(file_or_directory_name);
+    %if it's a .txt file then assume it's a list of filenames
+    if strcmp(ext,'.txt')
+        %open the file for reading
+        fid=fopen(file_or_directory_name,'r');        
+        %initializing loop variables
+        linetxt='foobar';
+        ii=0;
+        while all(linetxt~=-1)
+            ii=ii+1;
+            linetxt=fgetl(fid);
+            if linetxt~=-1
+                [dname,fname,ext]=fileparts(linetxt);
+                dlocs{ii}=dname;
+                dnames{ii}=fname;
+                exts{ii}=ext;
+            end
+        end
+        fclose(fid);%close the file
+    else
+        dlocs{1}=dname;
+        dnames{1}=fname;
+        exts{1}=ext;
+    end
+    clear dname fname ext
+else
+    error('Please input either a directory name or a filename.')
+end
+
+%% Loop through all the movies
+
+% turn off the warning if a variable isn't found in a .mat file
+warning('off','MATLAB:load:variableNotFound');
+
+% try to add gpufit to path
 try
-    [datalist,dataloc,findex]=uigetfile([directoryname,filesep,'*.*'],'multiselect','on');
-catch
-    curdir=pwd;
-    [datalist,dataloc,findex]=uigetfile([curdir,filesep,'*.*'],'multiselect','on');
+   addpath(genpath('gpufit')) 
 end
-if findex==0
-    fprintf('no data selected\n')
-    return
-end
-if ~iscell(datalist); datalist={datalist}; end
-for ii=1:numel(datalist); datalist{ii}=[dataloc datalist{ii}]; end
-[dlocs,dnames,exts]=cellfun(@fileparts,datalist,'uniformoutput',false);
 
 h2=waitbar(0);
 set(findall(h2,'type','text'),'Interpreter','none');
@@ -248,9 +288,9 @@ for ii=1:numel(dlocs)
     try
         load([dlocs{ii},filesep,dnames{ii},'.mat'],'goodframe');
     catch
-    end    
+    end
     if ~exist('goodframe','var')
-            goodframe=true(movsz(3),1);
+        goodframe=true(movsz(3),1);
     end
     %% The Average Subtraction
     % Only if doing bgsub.
@@ -416,24 +456,15 @@ for ii=1:numel(dlocs)
     % mode, to look at the results. Outpits an avi file called
     % moviename_ViewFits.avi
     if params.makeViewFits
-        try; waitbar((7*ii)/numel(dlocs)/7,h2,{['Making Viewfits ',dnames{ii}],'Overall Progress'}); end
-        if ~exist('trk_flit','var')
-            try
-                load([dlocs{ii},filesep,dnames{ii},'_AccBGSUB_fits.mat'],'trk_filt')
-            catch
-                try
-                    load([dlocs{ii},filesep,dnames{ii},'_fits.mat'],'trk_filt')
-                catch
+        try; waitbar((7*ii)/numel(dlocs)/7,h2,{['Making Viewfits ',dnames{ii}],'Overall Progress'}); end        
+        if params.bgsub
+            if ~exist('trk_filt','var')
+            try; load([dlocs{ii},filesep,dnames{ii},'_AccBGSUB_fits.mat'],'trk_filt'); end
+            else
                     trk_filt=[];
-                end
-                if ~isempty(trk_filt)
-                    warning('Fitting file was without AccBGSUB, but bgsub was true.\r\t\t Either run new instance from beginning or continue without bgsub.',1)
-                    keyboard
-                    params.bgsub=0;
                 end
             end
         end
-        if params.bgsub
             if params.orig_movie
                 if ~exist('fits','var')
                     try
@@ -475,11 +506,11 @@ for ii=1:numel(dlocs)
                 end
                 if ~params.trackingVF
                     ViewFits([dlocs{ii},filesep,dnames{ii},'_avgsub.mat'],...
-                        bgsub_mov,trk_filt,goodframe,fits,params.circ_D,params.write_mov,...
+                        bgsub_mov,trk_filt,movsz,goodframe,fits,params.circ_D,params.write_mov,...
                         params.autoscale_on,params.linewidth)
                 else
                     ViewFitsTracking([dlocs{ii},filesep,dnames{ii},'_avgsub.mat'],...
-                        bgsub_mov,trk_filt,params.circ_D,params.write_mov,...
+                        bgsub_mov,trk_filt,movsz,params.circ_D,params.write_mov,...
                         params.autoscale_on,params.linewidth)
                 end
             end
@@ -492,11 +523,11 @@ for ii=1:numel(dlocs)
                 end
             end
             if ~params.trackingVF
-                ViewFits([dlocs{ii},filesep,dnames{ii},'.mat'],mov,trk_filt,goodframe,fits,params.circ_D,params.write_mov,...
+                ViewFits([dlocs{ii},filesep,dnames{ii},'.mat'],mov,trk_filt,movsz,goodframe,fits,params.circ_D,params.write_mov,...
                     params.autoscale_on,params.linewidth)
             else
                 ViewFitsTracking([dlocs{ii},filesep,dnames{ii},'.mat'],...
-                    mov,trk_filt,params.circ_D,...
+                    mov,trk_filt,movsz,params.circ_D,...
                     params.write_mov,params.autoscale_on,params.linewidth)
             end
         end
@@ -508,4 +539,12 @@ try
 end
 tictoc=toc(wholeshabang);
 disp(num2str(tictoc))
+
+%turn warning back on
+warning('on','MATLAB:load:variableNotFound')
+
+% try to remove gpufit path
+try
+   rmpath(genpath('gpufit')) 
+end
 end

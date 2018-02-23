@@ -127,15 +127,15 @@ fits.frame=guesses(:,1);
 framelist=guesses(:,1);
 
 %looping through all the guesses
-parfor ii=1:size(guesses,1)
-    
-    %current frame and molecule position
-    curfrmnum=framelist(ii);
-    curmolr=molr(ii);
-    curmolc=molc(ii);
-    frmlst=off_frames{ii};
-    
-    if bgsub
+if bgsub
+    parfor ii=1:size(guesses,1)
+        
+        %current frame and molecule position
+        curfrmnum=framelist(ii);
+        curmolr=molr(ii);
+        curmolc=molc(ii);
+        frmlst=off_frames{ii};
+        
         %the average (or median) frame
         if do_avgsub
             mean_mov=mean(single(mov(curmolr+(-dfrlmsz:dfrlmsz),curmolc+(-dfrlmsz:dfrlmsz),frmlst)),3);
@@ -155,8 +155,21 @@ parfor ii=1:size(guesses,1)
         else
             params0=[dfrlmsz,dfrlmsz,gesss,gessb,gessN];
         end
-    else
-        data=singlesingle(mov(curmolr+(-dfrlmsz:dfrlmsz),curmolc+(-dfrlmsz:dfrlmsz),curfrmnum));
+        if MLE_fit && usegpu
+            dataset(:,ii)=data+4*abs(min(data));
+            params0(5)=min(data)+4*abs(min(data));
+            initial_parameters(:,ii)=params0;
+        else
+            initial_parameters(:,ii)=params0;
+            dataset(:,ii)=data;
+        end
+    end
+else
+    for ii=1:size(guesses,1)
+        curfrmnum=framelist(ii);
+        curmolr=molr(ii);
+        curmolc=molc(ii);
+        data=single(mov(curmolr+(-dfrlmsz:dfrlmsz),curmolc+(-dfrlmsz:dfrlmsz),curfrmnum));
         data=reshape(data,[],1);
         gessb=min(data(:));
         %the guessed amplitude, using the formula in MLEwG
@@ -166,17 +179,14 @@ parfor ii=1:size(guesses,1)
         else
             params0=[dfrlmsz;dfrlmsz;gesss;gessb;gessN];
         end
-        
-    end
-    
-    %Make all values positive for MLE fitting
-    if MLE_fit && usegpu
-        dataset(:,ii)=data+4*abs(min(data));
-        params0(5)=min(data)+4*abs(min(data));
-        initial_parameters(:,ii)=params0;
-    else
-        initial_parameters(:,ii)=params0;
-        dataset(:,ii)=data;
+        if MLE_fit && usegpu
+            dataset(:,ii)=data+4*abs(min(data));
+            params0(5)=min(data)+4*abs(min(data));
+            initial_parameters(:,ii)=params0;
+        else
+            initial_parameters(:,ii)=params0;
+            dataset(:,ii)=data;
+        end
     end
 end
 %%%% Fitting %%%%
@@ -226,9 +236,9 @@ if usegpu
     end
     fits.err=(1-chi_squares./sum((dataset-mean(dataset,1)).^2))';
     if MLE_fit
-        errbad=fits.err<0.10|states~=1;
+        errbad=fits.err<maxerr | states~=1;
     else
-        errbad=fits.err<0.10;
+        errbad=fits.err<maxerr;
     end
     fits.sum=sum(dataset,1)';
     %determining if it's a goodfit or not (remember this field was
@@ -381,7 +391,7 @@ else
                 fit_ang(ii)=fitPars(3);
             end
             fit_err(ii)=1-(sum(resid.^2)/sum((dataset(:,ii)-mean(dataset(:,ii))).^2));
-            errbad=fit_err(ii)<0.1;%too much error on fit?
+            errbad=fit_err(ii)<maxerr;%too much error on fit?
         end
         %Convert back into full frame coordinates, NOTE the -1!
         act_r(ii)=fit_r-dfrlmsz-1+molr(ii);
