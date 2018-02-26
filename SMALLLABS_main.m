@@ -89,7 +89,9 @@ function SMALLLABS_main(file_or_directory_name,dfrlmsz,avgwin,moloffwin,varargin
 
 %%% Actions %%%
 % Do background subtraction
-params.bgsub = 1;
+params.bgsub = true;
+% Make the average subtracted movie
+params.makeAvgsub = true;
 % Do guessing
 params.makeGuesses = true;
 % Check guesses
@@ -249,6 +251,9 @@ elseif exist(file_or_directory_name)==2
             end
         end
         fclose(fid);%close the file
+        %remove any leading or trailing blank spaces
+        dlocs=strtrim(dlocs);
+        exts=strtrim(exts);
     else
         dlocs{1}=dname;
         dnames{1}=fname;
@@ -301,7 +306,7 @@ for ii=1:numel(dlocs)
     % AVGSUB_tiffs will save an average subtracted .tif stack, called
     % moviename_avgsub.tif and write a .txt file with the parameters, called
     % moviename_avgsub_info.txt
-    if params.makeGuesses && params.bgsub
+    if params.makeAvgsub && params.bgsub
         if exist([dlocs{ii},filesep,dnames{ii},'_avgsub.mat'],'file')~=0
             avgsubparams=load([dlocs{ii},filesep,dnames{ii},'_avgsub.mat'],'subwidth','offset','do_avg','goodframe');
             if avgsubparams.subwidth==avgwin && avgsubparams.offset==params.offset && avgsubparams.do_avg==params.do_avg && sum(avgsubparams.goodframe)==sum(goodframe)
@@ -327,53 +332,49 @@ for ii=1:numel(dlocs)
     if params.makeGuesses
         try; waitbar((7*ii-4)/numel(dlocs)/7,h2,{['Guessing on ',dnames{ii}],'Overall Progress'}); end
         if params.bgsub
-            if ~exist('bgsub_mov','var')
-                try
-                    bgsub_mov=load([dlocs{ii},filesep,dnames{ii},'_avgsub.mat'],'mov');
-                    bgsub_mov=bgsub_mov.mov;
-                catch
-                    warning('No avgsub file was found, but bgsub was true.\r\t\t Either run new instance from beginning or continue without bgsub.',1)
-                    keyboard
-                    params.bgsub=0;
-                end
+            % try loading in the bgsub movie
+            try
+                bgsub_mov=load([dlocs{ii},filesep,dnames{ii},'_avgsub.mat'],'mov');
+                bgsub_mov=bgsub_mov.mov;
+            catch
+                warning('No avgsub file was found, but bgsub was true.\r\t\t Either run new instance from beginning or continue without bgsub.',1)
+                keyboard
+                params.bgsub=0;
             end
             if params.bgsub
-                guesses=Guessing([dlocs{ii},filesep,dnames{ii},'_avgsub'],bgsub_mov,movsz,goodframe,dfrlmsz,...
+                Guessing([dlocs{ii},filesep,dnames{ii},'_avgsub'],bgsub_mov,movsz,goodframe,dfrlmsz,...
                     params.bpthrsh,params.egdesz,params.pctile_frame,params.check_guesses,...
                     params.mask_fname,params.make_guessmovie);
             else
-                guesses=Guessing([dlocs{ii},filesep,dnames{ii}],mov,movsz,goodframe,dfrlmsz,...
+                Guessing([dlocs{ii},filesep,dnames{ii}],mov,movsz,goodframe,dfrlmsz,...
                     params.bpthrsh,params.egdesz,params.pctile_frame,params.check_guesses,...
                     params.mask_fname,params.make_guessmovie);
             end
         else
-            guesses=Guessing([dlocs{ii},filesep,dnames{ii}],mov,movsz,goodframe,dfrlmsz,...
+            Guessing([dlocs{ii},filesep,dnames{ii}],mov,movsz,goodframe,dfrlmsz,...
                 params.bpthrsh,params.egdesz,params.pctile_frame,params.check_guesses,...
                 params.mask_fname,params.make_guessmovie);
         end
-        
-    end
-    if ~params.orig_movie
         clear bgsub_mov
-    end
+    end   
     %% Make the off frames list
     % loop through all of the movies and using the guesses .mat file will write
     % the off frames list to a .mat file, called guessesname_Mol_off_frames.mat
     if params.makeOffFrames && params.bgsub
         try; waitbar((7*ii-3)/numel(dlocs)/7,h2,{['Making Off Frames on ',dnames{ii}],'Overall Progress'}); end
-        if ~exist('guesses','var')
-            try
-                load([dlocs{ii},filesep,dnames{ii},'_avgsub_guesses.mat'],'guesses','dfrlmsz')
-            catch
-                warning('No avgsub_guesses file was found, but bgsub was true.\r\t\t Either run new instance from beginning or continue without bgsub.',1)
-                keyboard
-                params.bgsub=0;
-            end
+        %try loading in the guesses
+        try
+            load([dlocs{ii},filesep,dnames{ii},'_avgsub_guesses.mat'],'guesses','dfrlmsz')
+        catch
+            warning('No avgsub_guesses file was found, but bgsub was true.\r\t\t Either run new instance from beginning or continue without bgsub.',1)
+            keyboard
+            params.bgsub=0;
         end
         if params.bgsub
-            off_frames=Mol_off_frames([dlocs{ii},filesep,dnames{ii},'_avgsub_guesses.mat'],...
+            Mol_off_frames([dlocs{ii},filesep,dnames{ii},'_avgsub_guesses.mat'],...
                 guesses,goodframe,movsz,dfrlmsz,moloffwin);
         end
+        clear guesses dfrlmsz
     end
     %% Subtract and fit
     % If not doing bgsub then a string ('nobgsub') is sent to Subtract_then_fit
@@ -385,39 +386,38 @@ for ii=1:numel(dlocs)
     if params.fitting
         try; waitbar((7*ii-2)/numel(dlocs)/7,h2,{['Fitting ',dnames{ii}],'Overall Progress'}); end
         if params.bgsub
-            if ~exist('off_frames','var')
-                try
-                    load([dlocs{ii},filesep,dnames{ii},'_avgsub_guesses_Mol_off_frames.mat'],'off_frames','dfrlmsz','moloffwin')
-                catch
-                    warning('No Mol_off_frames file was found, but bgsub was true.\r\t\t Either run new instance from beginning or continue without bgsub.',1)
-                    keyboard
-                    params.bgsub=0;
-                end
-            end
+            %try loading in the mol_off_frames
+            try
+                load([dlocs{ii},filesep,dnames{ii},'_avgsub_guesses_Mol_off_frames.mat'],'off_frames','dfrlmsz','moloffwin')
+            catch
+                warning('No Mol_off_frames file was found, but bgsub was true.\r\t\t Either run new instance from beginning or continue without bgsub.',1)
+                keyboard
+                params.bgsub=0;
+            end            
             if params.bgsub
-                if ~exist('guesses','var')
-                    load([dlocs{ii},filesep,dnames{ii},'_avgsub_guesses.mat'],'guesses')
-                end
-                fits=Subtract_then_fit([dlocs{ii},filesep,dnames{ii}],mov,movsz,...
+                % load in the guesses
+                load([dlocs{ii},filesep,dnames{ii},'_avgsub_guesses.mat'],'guesses');
+                % fit it
+                Subtract_then_fit([dlocs{ii},filesep,dnames{ii}],mov,movsz,...
                     off_frames,moloffwin,guesses,dfrlmsz,params.MLE_fit,params.stdtol,...
                     params.maxerr,params.do_avgsub,params.which_gaussian,params.fit_ang,params.usegpu);
             else
-                if ~exist('guesses','var')
-                    load([dlocs{ii},filesep,dnames{ii},'_guesses.mat'],'guesses','dfrlmsz')
-                end
-                fits=Subtract_then_fit([dlocs{ii},filesep,dnames{ii}],mov,movsz,...
+                % load in the guesses
+                load([dlocs{ii},filesep,dnames{ii},'_guesses.mat'],'guesses','dfrlmsz')
+                % fit it
+                Subtract_then_fit([dlocs{ii},filesep,dnames{ii}],mov,movsz,...
                     'nobgsub','nobgsub',guesses,dfrlmsz,params.MLE_fit,params.stdtol,...
                     params.maxerr,params.do_avgsub,params.which_gaussian,params.fit_ang,params.usegpu);
             end
         else
-            if ~exist('guesses','var')
-                load([dlocs{ii},filesep,dnames{ii},'_guesses.mat'],'guesses','dfrlmsz')
-            end
-            fits=Subtract_then_fit([dlocs{ii},filesep,dnames{ii}],mov,movsz,...
+            % load in the guesses
+            load([dlocs{ii},filesep,dnames{ii},'_guesses.mat'],'guesses','dfrlmsz')
+            % fit it
+            Subtract_then_fit([dlocs{ii},filesep,dnames{ii}],mov,movsz,...
                 'nobgsub','nobgsub',guesses,dfrlmsz,params.MLE_fit,params.stdtol,...
                 params.maxerr,params.do_avgsub,params.which_gaussian,params.fit_ang,params.usegpu);
         end
-        
+        clear guesses dfrlmsz off_frames moloffwin
     end
     
     %% Tracking
@@ -428,27 +428,28 @@ for ii=1:numel(dlocs)
     if params.tracking
         try; waitbar((7*ii-1)/numel(dlocs)/7,h2,{['Tracking ',dnames{ii}],'Overall Progress'}); end
         if params.bgsub
-            if ~exist('fits','var')
-                try
-                    load([dlocs{ii},filesep,dnames{ii},'_AccBGSUB_fits.mat'],'fits')
-                catch
-                    warning('Fitting file was without AccBGSUB, but bgsub was true.\r\t\t Either run new instance from beginning or continue without bgsub.',1)
-                    keyboard
-                    params.bgsub=0;
-                    load([dlocs{ii},filesep,dnames{ii},'_fits.mat'],'fits')
-                end
+            % try loading in the fits
+            try
+                load([dlocs{ii},filesep,dnames{ii},'_AccBGSUB_fits.mat'],'fits')
+            catch
+                warning('Fitting file was without AccBGSUB, but bgsub was true.\r\t\t Either run new instance from beginning or continue without bgsub.',1)
+                keyboard
+                params.bgsub=0;
+                load([dlocs{ii},filesep,dnames{ii},'_fits.mat'],'fits')
             end
+            % track it
             if params.bgsub
-                [trk_filt,tracks]=Track_filter([dlocs{ii},filesep,dnames{ii},'_AccBGSUB_fits.mat'],fits,...
+                Track_filter([dlocs{ii},filesep,dnames{ii},'_AccBGSUB_fits.mat'],fits,...
                     1,params.trackparams,params.savetracks);
             else
-                [trk_filt,tracks]=Track_filter([dlocs{ii},filesep,dnames{ii},'_fits.mat'],fits,...
+                Track_filter([dlocs{ii},filesep,dnames{ii},'_fits.mat'],fits,...
                     1,params.trackparams,params.savetracks);
             end
         else
-            [trk_filt,tracks]=Track_filter([dlocs{ii},filesep,dnames{ii},'_fits.mat'],fits,...
+            Track_filter([dlocs{ii},filesep,dnames{ii},'_fits.mat'],fits,...
                 1,params.trackparams,params.savetracks);
         end
+        clear fits
     end
     
     %% Make the ViewFits movie
@@ -458,29 +459,25 @@ for ii=1:numel(dlocs)
     if params.makeViewFits
         try; waitbar((7*ii)/numel(dlocs)/7,h2,{['Making Viewfits ',dnames{ii}],'Overall Progress'}); end
         if params.bgsub
-            if ~exist('fits','var')
-                try; load([dlocs{ii},filesep,dnames{ii},'_AccBGSUB_fits.mat'],'fits','trk_filt'); end
-            end
-            if ~exist('trk_filt','var')
-                try; load([dlocs{ii},filesep,dnames{ii},'_AccBGSUB_fits.mat'],'fits','trk_filt'); end
-            end
+            %try loading in the fits & tracking results
+            load([dlocs{ii},filesep,dnames{ii},'_AccBGSUB_fits.mat'],'fits','trk_filt','tracks');
+            
+            %set trk_filt to empty if it doesn't exist            
             if ~exist('trk_filt','var')
                 trk_filt=[];
             end
-            if ~exist('tracks','var')
-                try; load([dlocs{ii},filesep,dnames{ii},'_AccBGSUB_fits.mat'],'fits','tracks'); end
-            end
-            if ~exist('bgsub_mov','var')
-                try; bgsubmov=load([dlocs{ii},filesep,dnames{ii},'_avgsub.mat'],'mov'); end
-                bgsub_mov=single(bgsubmov.mov);
-                clear bgsubmov
-            end
+                        
             if params.orig_movie
                 if ~params.trackingVF
                     ViewFits([dlocs{ii},filesep,dnames{ii},'.mat'],...
                         mov,trk_filt,movsz,goodframe,fits,...
                         params.circ_D,params.write_mov,params.autoscale_on,params.linewidth)
                 else
+                    if ~exist('bgsub_mov','var')
+                        try; bgsubmov=load([dlocs{ii},filesep,dnames{ii},'_avgsub.mat'],'mov'); end
+                        bgsub_mov=single(bgsubmov.mov);
+                        clear bgsubmov
+                    end
                     ViewFitsTracking([dlocs{ii},filesep,dnames{ii},'.mat'],...
                         mov,movsz,tracks,...
                         params.circ_D,params.write_mov,params.autoscale_on,params.linewidth)
@@ -520,6 +517,7 @@ for ii=1:numel(dlocs)
                     params.circ_D,params.write_mov,params.autoscale_on,params.linewidth)
             end
         end
+        clear fits trk_filt tracks
     end
 end
 try
