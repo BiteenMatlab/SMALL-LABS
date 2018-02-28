@@ -376,7 +376,7 @@ for ii=1:numel(dlocs)
             Mol_off_frames([dlocs{ii},filesep,dnames{ii},'_avgsub_guesses.mat'],...
                 guesses,goodframe,movsz,dfrlmsz,moloffwin);
         end
-        clear guesses dfrlmsz
+        clear guesses
     end
     %% Subtract and fit
     % If not doing bgsub then a string ('nobgsub') is sent to Subtract_then_fit
@@ -419,7 +419,7 @@ for ii=1:numel(dlocs)
                 'nobgsub','nobgsub',guesses,dfrlmsz,params.MLE_fit,params.stdtol,...
                 params.maxerr,params.do_avgsub,params.which_gaussian,params.fit_ang,params.usegpu);
         end
-        clear guesses dfrlmsz off_frames moloffwin
+        clear guesses off_frames
     end
     
     %% Tracking
