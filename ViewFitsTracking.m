@@ -45,13 +45,13 @@ if nargin<6;linewidth=1;end
 
 [pathstr,name,ext] = fileparts(movfname);
 
+disp([char(datetime),'   Making ViewFitsTracking movie for ',name])
+
 %look for a goodframe list, otherwise set all frames as goodframes
 
 if write_mov
     v = VideoWriter([pathstr,filesep,name,'_ViewFitsTracking.avi'],'Uncompressed AVI');
-    open(v);
-    
-    disp(['Making ViewFits for ',name]);
+    open(v);    
 end
 
 

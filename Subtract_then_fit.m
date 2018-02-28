@@ -92,7 +92,12 @@ function  fits=Subtract_then_fit(mov_fname,mov,movsz,...
 %     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 %
 subnfit=tic;%for measuring the time to run the entire program
+
 [pathstr,fname] = fileparts(mov_fname);
+
+disp([char(datetime),'   Fitting ',fname])
+
+% plot_on is for debugging
 plot_on=0;
 % check if a GPU is available
 if usegpu

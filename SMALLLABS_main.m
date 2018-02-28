@@ -330,7 +330,7 @@ for ii=1:numel(dlocs)
     % loop through each movie and make the guesses, which will be saved in a
     % .mat file called moviename_guesses.mat
     if params.makeGuesses
-        try; waitbar((7*ii-4)/numel(dlocs)/7,h2,{['Guessing on ',dnames{ii}],'Overall Progress'}); end
+        try; waitbar((7*ii-4)/numel(dlocs)/7,h2,{['Making guesses for ',dnames{ii}],'Overall Progress'}); end
         if params.bgsub
             % try loading in the bgsub movie
             try
@@ -361,7 +361,7 @@ for ii=1:numel(dlocs)
     % loop through all of the movies and using the guesses .mat file will write
     % the off frames list to a .mat file, called guessesname_Mol_off_frames.mat
     if params.makeOffFrames && params.bgsub
-        try; waitbar((7*ii-3)/numel(dlocs)/7,h2,{['Making Off Frames on ',dnames{ii}],'Overall Progress'}); end
+        try; waitbar((7*ii-3)/numel(dlocs)/7,h2,{['Making off-frames lists for ',dnames{ii}],'Overall Progress'}); end
         %try loading in the guesses
         try
             load([dlocs{ii},filesep,dnames{ii},'_avgsub_guesses.mat'],'guesses','dfrlmsz')
@@ -445,7 +445,8 @@ for ii=1:numel(dlocs)
                 Track_filter([dlocs{ii},filesep,dnames{ii},'_fits.mat'],fits,...
                     1,params.trackparams,params.savetracks);
             end
-        else
+        else            
+            load([dlocs{ii},filesep,dnames{ii},'_fits.mat'],'fits')
             Track_filter([dlocs{ii},filesep,dnames{ii},'_fits.mat'],fits,...
                 1,params.trackparams,params.savetracks);
         end
@@ -494,19 +495,14 @@ for ii=1:numel(dlocs)
                 end
             end
         else
-            if ~exist('fits','var')
-                try
-                    load([dlocs{ii},filesep,dnames{ii},'_fits.mat'],'fits','trk_filt');
-                catch
-                    error('Check bgsub')
-                end
-            end
-            if ~exist('trk_filt','var')
-                try; load([dlocs{ii},filesep,dnames{ii},'_fits.mat'],'fits','trk_filt'); end
-            end
+            %try loading in the fits & tracking results
+            load([dlocs{ii},filesep,dnames{ii},'_fits.mat'],'fits','trk_filt','tracks');
+            
+            %set trk_filt to empty if it doesn't exist            
             if ~exist('trk_filt','var')
                 trk_filt=[];
             end
+            
             if ~params.trackingVF
                 ViewFits([dlocs{ii},filesep,dnames{ii},'.mat'],...
                     mov,trk_filt,movsz,goodframe,fits,...
@@ -524,7 +520,7 @@ try
     delete(h2)
 end
 tictoc=toc(wholeshabang);
-disp(num2str(tictoc))
+% disp(num2str(tictoc))
 
 %turn warning back on
 warning('on','MATLAB:load:variableNotFound')

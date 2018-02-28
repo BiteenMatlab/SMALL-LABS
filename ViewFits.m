@@ -39,12 +39,12 @@ function  ViewFits(movfname,mov,trk_filt,movsz,goodframe,fits,circ_D,write_mov,.
 
 [pathstr,name] = fileparts(movfname);
 
+disp([char(datetime),'   Making ViewFits movie for ',name])
+
 %look for a goodframe list, otherwise set all frames as goodframes
 if write_mov
     v = VideoWriter([pathstr,filesep,name,'_ViewFits.avi'],'Uncompressed AVI');
     open(v);
-    
-    disp(['Making ViewFits for ',name]);
 end
 
 

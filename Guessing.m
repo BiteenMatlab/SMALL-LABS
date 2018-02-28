@@ -76,7 +76,8 @@ tic;%for measuring the time to run the entire program
 %% Setup
 
 [pathstr,fname] = fileparts(mov_fname);
-%look for a goodframe list, otherwise set all frames as goodframes
+
+disp([char(datetime),'   Making guesses for ',fname])
 
 %intializing the guess indices cell array
 guesses=zeros(1,3);

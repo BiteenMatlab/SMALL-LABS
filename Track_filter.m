@@ -66,7 +66,8 @@ end
 trk_filt=false(size(fits.frame,1),1);
 
 [~,fname] = fileparts(fits_fname);
-disp(['Tracking ',fname]);
+
+disp([char(datetime),'   Tracking ',fname])
 
 tracks = Tracking(fits_fname,fits,trackparams,savetracks);
 if ~isempty(tracks)
