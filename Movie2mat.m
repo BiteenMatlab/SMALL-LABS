@@ -1,4 +1,4 @@
-function Movie2mat(file_or_directory_name)
+function Movie2mat(file_or_directory_name,overwritemov)
 %% Movie2mat
 % Converts movie(s) to a .mat file containing the movie as a variable
 % called mov
@@ -84,9 +84,14 @@ for ii=1:numel(dlocs)
         if ~isv73
             error(['Please ensure that movie .mat files are version 7.3 and ',...
                 'the movie data is saved in the ''mov'' variable.'])
-        end        
+        end
+    elseif exist([dlocs{ii},filesep,dnames{ii},'.mat'],'file')==2 && ~overwritemov
+        isv73=getmatver([dlocs{ii},filesep,dnames{ii},'.mat']);
+        if ~isv73
+            error(['Please ensure that movie .mat files are version 7.3 and ',...
+                'the movie data is saved in the ''mov'' variable.'])
+        end
     else
-        
         %setup the matfile
         mov='tempvariable';
         save([dlocs{ii},filesep,dnames{ii}],'mov','-v7.3');

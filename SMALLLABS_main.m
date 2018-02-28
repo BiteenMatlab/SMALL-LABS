@@ -88,6 +88,8 @@ function SMALLLABS_main(file_or_directory_name,dfrlmsz,avgwin,moloffwin,varargin
 % parameter values are:
 
 %%% Actions %%%
+% Overwrite .mov movie if a .mov version of the movie already exists
+params.overwritemov = false;
 % Do background subtraction
 params.bgsub = true;
 % Make the average subtracted movie
@@ -285,7 +287,7 @@ for ii=1:numel(dlocs)
     % Movies must be version 7.3 mat files with the movie data saved in the
     % 'mov' variable. This function converts several standard scientific movie
     % data types into this format.
-    Movie2mat([dlocs{ii},filesep,dnames{ii},exts{ii}])
+    Movie2mat([dlocs{ii},filesep,dnames{ii},exts{ii}],params.overwritemov)
     
     load([dlocs{ii},filesep,dnames{ii},'.mat'],'mov');
     mov=single(mov);
