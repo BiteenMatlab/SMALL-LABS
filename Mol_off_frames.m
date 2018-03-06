@@ -39,13 +39,25 @@ function off_frames=Mol_off_frames(guessfname,guesses,goodframe,movsz,dfrlmsz,mo
 % Erroring out if dfrlmsz isn't an integer, because it's a "strong"
 % parameter. You should really input what you mean.
 if dfrlmsz~=round(dfrlmsz);error('dfrlmsz must be an integer');end
+
+%setting moloffwin to movie length - 1, which is the maximum meaningful
+%length for moloffwin
+if moloffwin>=movsz(3)
+    moloffwin=movsz(3)-1;
+    %round to nearest even integer
+    if moloffwin~=(floor(moloffwin/2)*2)
+        moloffwin=(floor(moloffwin/2)*2);
+    end
+    warning(['moloffwin was >=',num2str(movsz(3)),' (the number of frames in the movie). ',...
+        'It has been reset to ',num2str(moloffwin)])
+end
 %rounding moloffwin
-if moloffwin~=(ceil(moloffwin/2)*2)
-    moloffwin=(ceil(moloffwin/2)*2);
+if moloffwin~=(floor(moloffwin/2)*2)
+    moloffwin=(floor(moloffwin/2)*2);
     warning(['moloffwin must be an even integer. It has been reset to avgwin = ',num2str(moloffwin)])
 end
 
-% last updated 8/12/16 BPI
+% last updated 3/6/16 BPI & SAL
 
 % NOTE: if you're inspecting this code, you'll notice that I'm making use
 % of ismembc instead of ismember. ismembc is an undocumented helper
@@ -66,7 +78,7 @@ disp([char(datetime),'   Making off-frames lists for ',fname])
 off_frames=cell(size(guesses,1),1);
 
 for ii=1:movsz(3)
-
+    
     %number of molecules in the current frame
     frmrows=find(guesses(:,1)==ii);
     nummol=length(frmrows);
