@@ -133,7 +133,7 @@ framelist=guesses(:,1);
 
 %looping through all the guesses
 if bgsub
-    parfor ii=1:size(guesses,1)
+    for ii=1:size(guesses,1)
         
         %current frame and molecule position
         curfrmnum=framelist(ii);
