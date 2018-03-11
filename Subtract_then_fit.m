@@ -6,43 +6,52 @@ function  fits=Subtract_then_fit(mov_fname,mov,movsz,...
 % stored in Mol_off_frames_fname.
 %
 % If you just want to do fitting, and not do background subtraction, set
-% Mol_off_frames_fname = 'nobgsub'. The program will take care of
-% everything else.
-
+% off_frames = 'nobgsub'. The program will take care of everything else.
+%
 %%%% Inputs %%%%
-% mov_fname the filename of the tiff stack movie
-
-% Mol_off_frames_fname is the filename .mat file output from the function
-% Mol_off_frames. If not doing background subtraction, set this to
-% 'nobgsub'
-
-% guessfname is the filename for the guesses .mat file
-
+% mov_fname the filename of the movie
+%
+% mov is the movie data as a 3D array where the third dimension is the
+% frame number.
+%
+% movsz is the output of size(mov)
+%
+% off_frames is the ouput from Mol_off_frames.mat which contains the off
+% frames list for all guesses.
+%
+% moloffwin is the number of frames around the current frame to use for the
+% BGSUB
+%
+% guesses is guesses array from Guessing.mat
+%
+% dfrlmsz is the  size of a diffraction limited spot in pixels. It's the
+% nominal diameter, NOT the FWHM or something similar. Integer please
+%
 % MLE_fit  a Boolean determining whether or not MLE fitting is used. Set to
-% 1 to use MLE and to 0 to use least squares. Default is 0. Note that MLE
-% is quite slow, and so its not recommended for a large number of guesses
-
-% edgedist is the distance in pixels from the edge of the frame to ignore.
-% default is 10
-
-% stdtol is tolerance on fit Gaussian STD, to leae filtering options for
-% later, default value is 1.5
-
-% maxerr is the maximum error of the fit for MLE fit, using variance default
-% 0.1 (can't be above this) for LSQR fit, using the 95% confidence interval
-% on the position, default max is 2
-
+% 1 to use MLE and to 0 to use least squares. Note that MLE is quite slow,
+% and so its not recommended for a large number of guesses
+%
+% stdtol is tolerance on fit Gaussian STD.
+%
+% maxerr is the maximum error of the fit for MLE fit, using variance
+% default 0.1 (can't be above this) for LSQR fit, using the 95% confidence
+% interval on the position
+%
 % do_avgsub is a Boolean determining whether or not to subtract the mean of
 % the off frames. Set to 1 to subtract the mean and to 0 to subtract the
-% median. Default is 1.
-
+% median.
+%
 % which_gaussian determines what functional form of Gaussian function the
 % molecules will be fit to if using least-squares fitting (MLE fitting only
 % fits symmetric Gaussian). Set to 1 to use a symmetric Gaussian. Set to 2
-% to use an asymmetric Gaussian (with axes along the row and column
-% dimension). Set to 3 to use a freely rotating asymmetric Gaussian.
-% Default is 1.
-
+% to use an asymmetric Gaussian (with angle determined by fit_ang). Set to
+% 3 to use a freely rotating asymmetric Gaussian.
+%
+% fit_ang is the angle in degrees for an asymmetric Gaussian fit, see above
+%
+% usegpu is Boolean determining whether or not to use a CUDA enabled GPU
+% for fitting if available.
+%
 %%%% Output %%%%
 % a .mat file, importantly containing the fits structure that has fields
 %frame number of the fit:
@@ -70,23 +79,24 @@ function  fits=Subtract_then_fit(mov_fname,mov,movsz,...
 % fits.sum
 %goodfit boolean:
 % fits.goodfit
-
+%
 %%%% Dependencies %%%%
-% TIFFStack
-% MLEwG (for MLE fitting)
+% TIFFStack 
+% MLEwG (for MLE fitting) 
 % gaussfit (for least squares fitting)
-
-%     Copyright (C) 2017  Benjamin P Isaacoff
+% gpufit
+%
+%     Copyright (C) 2018  Benjamin P Isaacoff
 %
 %     This program is free software: you can redistribute it and/or modify
 %     it under the terms of the GNU General Public License as published by
-%     the Free Software Foundation, either version 3 of the License, or
-%     (at your option) any later version.
+%     the Free Software Foundation, either version 3 of the License, or (at
+%     your option) any later version.
 %
-%     This program is distributed in the hope that it will be useful,
-%     but WITHOUT ANY WARRANTY; without even the implied warranty of
-%     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-%     GNU General Public License for more details.
+%     This program is distributed in the hope that it will be useful, but
+%     WITHOUT ANY WARRANTY; without even the implied warranty of
+%     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+%     General Public License for more details.
 %
 %     You should have received a copy of the GNU General Public License
 %     along with this program.  If not, see <http://www.gnu.org/licenses/>.
@@ -133,7 +143,7 @@ framelist=guesses(:,1);
 
 %looping through all the guesses
 if bgsub
-    for ii=1:size(guesses,1)
+    parfor ii=1:size(guesses,1)
         
         %current frame and molecule position
         curfrmnum=framelist(ii);
@@ -506,7 +516,7 @@ else
     fname=[pathstr,filesep,fname,'_fits.mat'];
 end
 save(fname,'fits','MLE_fit','stdtol','maxerr','dfrlmsz','movsz','moloffwin',...
-    'tictoc','do_avgsub','which_gaussian')
+    'tictoc','do_avgsub','which_gaussian','-v7.3')
 
 end
 
@@ -514,8 +524,8 @@ function g = gaussian_2d(x, y, p)
 % Generates a 2D Gaussian peak.
 % http://gpufit.readthedocs.io/en/latest/api.html#gauss-2d
 %
-% x,y - x and y grid position values
-% p - parameters (amplitude, x,y center position, width, offset)
+% x,y - x and y grid position values p - parameters (amplitude, x,y center
+% position, width, offset)
 
 g = p(1) * exp(-((x - p(2)).^2 + (y - p(3)).^2) / (2 * p(4)^2)) + p(5);
 

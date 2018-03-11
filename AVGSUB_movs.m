@@ -1,33 +1,26 @@
 function  bgsub_mov=AVGSUB_movs(filename,mov,goodframe,do_avg,subwidth,offset)
 %% AVGSUB_tiffs
-% updated BPI 1/30/17 This function does average (or median) subtraction
-% on a batch of movies. Currently does the entire movie, I might add
-% functionality to do a portion of the frames only.
-
-% filename is the name of the movie to be subtracted, either .mat or tiff
-% stack
-
-% do_avg is a boolean. Set to 1 to use an average, or set to 0 to use a
-% median. Note median is a lot slower than mean.
-
-% runningavg is a boolean. Set to 1 to do a running average or set to 0 to
-% do a static window background subtraction
-
-% subwidth is the width of temporal window that will be averaged. Needs to
-% be an odd integer
-
-% offset is the intensity offset to deal with negative pixels. Default is
-% 1000
-
-% This functions doesn't output anything, instead saves the AVGSUB movie as
-% a .mat file at the original file location with the original file name,
-% but with _avgsub appended to the name. Also outputs a short text file
-% with the parameters used
-
+% updated BPI 3/10/18 This function does average (or median) subtraction
+% of a movie.
+%
+% filename is the name of the movie to be subtracted, which will determine
+% the name of the avgsub movie as 'filename_avgsub.mat'
+%
+% mov is the movie data as a 3D array where the third dimension is the
+% frame number.
+%
+% do_avg is a Boolean. Set to true to use an average, or set to false to use a
+% median. Note median is slightly slower than mean.
+%
+% subwidth is the length of temporal window that will be averaged.
+%
+% This function saves the AVGSUB movie as a .mat file at the original file
+% location with the original file name, but with _avgsub appended to the
+% name.
 
 %%%% Dependencies %%%%
 
-%     Copyright (C) 2017  Benjamin P Isaacoff
+%     Copyright (C) 2018  Benjamin P Isaacoff
 %
 %     This program is free software: you can redistribute it and/or modify
 %     it under the terms of the GNU General Public License as published by
@@ -61,8 +54,6 @@ else
     bgsub_mov=mov-movmedian(mov,subwidth,3,'omitnan')+offset;
 end
 
-% bgsub_mov(:,:,~gfs)=NaN;
-
 %% Check and save
 
 if any(bgsub_mov(:)<0)
@@ -72,8 +63,9 @@ end
 tictoc=toc;%the time to do the calculations
 
 %%%%Save the movie%%%%
-%rename the bgsub movie for saving
+% convert to int16 and rename for saving
 mov=int16(bgsub_mov);
+% save the movie and the parameters
 save([pathstr,filesep,fname,'_avgsub.mat'],'mov','goodframe','do_avg','subwidth','offset','tictoc','-v7.3')
 
 %this is the old tif saving code, commented out for now

@@ -18,7 +18,7 @@ function tracks = Tracking(fits_fname,fits,trackparams,savetracks)
 % Track_3D2
 % hungarian
 
-%     Copyright (C) 2017  Benjamin P Isaacoff
+%     Copyright (C) 2018  Benjamin P Isaacoff
 %
 %     This program is free software: you can redistribute it and/or modify
 %     it under the terms of the GNU General Public License as published by
@@ -67,7 +67,7 @@ trfile=Track_3D2(goodfits,trackparams(1),alpha,trackparams(3),trackparams(5),tra
     1,trackparams(7),trackparams(2));
 
 if savetracks
-    save([fits_fname,'_tracks'],'trfile','trackparams')
+    save([fits_fname,'_tracks'],'trfile','trackparams','-v7.3')
 end
 
 if ~isempty(trfile)

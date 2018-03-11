@@ -5,7 +5,12 @@ function off_frames=Mol_off_frames(guessfname,guesses,goodframe,movsz,dfrlmsz,mo
 % movie
 %
 %%%% Inputs %%%%
-% guessfname is the name of the .mat file with the guesses
+% guessfname is the name of the .mat file with the guesses, for output file
+% naming purposes
+%
+% guesses is the array of guesses
+%
+% movsz is the output of size(mov)
 %
 % dfrlmsz is the  size of a diffraction limited spot in pixels. It's the
 % nominal diameter, NOT the FWHM or something similar. Integer please!
@@ -20,7 +25,7 @@ function off_frames=Mol_off_frames(guessfname,guesses,goodframe,movsz,dfrlmsz,mo
 % The program currently also writes a .mat file with off list and all of the
 % parameters saved.
 
-%     Copyright (C) 2017  Benjamin P Isaacoff
+%     Copyright (C) 2018  Benjamin P Isaacoff
 %
 %     This program is free software: you can redistribute it and/or modify
 %     it under the terms of the GNU General Public License as published by
@@ -125,10 +130,9 @@ for ii=1:movsz(3)
     end
 end
 
-
 tictoc=toc;%the time to run the entire program
 
 %save the data
-save([pathstr,filesep,fname,'_Mol_off_frames.mat'],'off_frames','dfrlmsz','moloffwin','movsz','tictoc')
+save([pathstr,filesep,fname,'_Mol_off_frames.mat'],'off_frames','dfrlmsz','moloffwin','movsz','tictoc','-v7.3')
 
 end

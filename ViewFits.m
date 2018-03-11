@@ -1,9 +1,25 @@
 function  ViewFits(movfname,mov,trk_filt,movsz,goodframe,fits,circ_D,write_mov,...
     autoscale_on,linewidth)
-%ViewFits plots or writes a view fits movie using the tiff stack movie
-%specified by mov_fname, and the fits from Subtract_mol_off_frames mat file
-%specficied by fits_fname.
+%ViewFits plots or writes a view fits movie
+% 
+%%%% Inputs %%%%
 %
+% movfname is the filename of the movie, for output naming purposes
+%
+% mov is the movie data as a 3D array where the third dimension is the
+% frame number.
+% 
+% trk_filt is the track filter from Track_filter.m
+% 
+% movsz is the output of size(mov)
+%
+% goodframe is an optional logical vector indicating which frames are to be
+% ignored. The length of the goodframe vector should be the number of
+% frames in mov. To ignore a frame set the corresponding element in
+% goodframe to false.
+%
+% fits is the fit structure outputted from Subtract_then_fit.m
+% 
 % circ_D is the diameter of the circle to show the fit, default is 7
 %
 % write_mov is a boolean determining whether the viewfits movie will be
@@ -13,14 +29,14 @@ function  ViewFits(movfname,mov,trk_filt,movsz,goodframe,fits,circ_D,write_mov,.
 % be set frame by frame. If set to 0 a handful of frames throughout the movie
 % are used to set the grayscale
 % 
-% linewidth is the linewidth of the circles in the movie. Default is 1
+% linewidth is the linewidth of the circles in the movie.
 %
 %%%% Color Scheme %%%%
 % green circles are good fits
 % red circles are bad fits 
 % magenta circles are fits which passed the tracking filter
 
-%     Copyright (C) 2017  Benjamin P Isaacoff
+%     Copyright (C) 2018  Benjamin P Isaacoff
 %
 %     This program is free software: you can redistribute it and/or modify
 %     it under the terms of the GNU General Public License as published by

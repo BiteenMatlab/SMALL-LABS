@@ -3,16 +3,21 @@ function [trk_filt,tracks]= Track_filter(fits_fname,fits,append_vec,trackparams,
 % written BPI 6/7/16
 % Track_filter is a function to filter based on tracking. Currently just
 % tracks and removes and the first and last frame from the track
-
+%
 % fits_fname is the name of the fits .mat file, importantly containing an
 % array called fits with the fit information with column 9 being the
 % goodfit boolean
-
+% 
+% fits is the fits structure from Subtract_then_fit.m
+%
 % append_vec is a boolean determining whether trk_filt will be appended to
-% the fit .mat file. Default is 0
-
+% the fit .mat file.
+%
 % trackparams are the tracking parameters, definitions and defaults below
-
+%
+% savetracks is an optional Boolean determining whether the output of
+% Track3D2 will be saved separately
+%
 %%%% Outputs %%%%
 % trk_filt is a logical vector which indicates whether or not the fit passed
 % the filter
@@ -22,7 +27,7 @@ function [trk_filt,tracks]= Track_filter(fits_fname,fits,append_vec,trackparams,
 
 % the function also can append the fit .mat file with trk_filt
 
-%     Copyright (C) 2017  Benjamin P Isaacoff
+%     Copyright (C) 2018 Benjamin P Isaacoff
 %
 %     This program is free software: you can redistribute it and/or modify
 %     it under the terms of the GNU General Public License as published by

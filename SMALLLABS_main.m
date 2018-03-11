@@ -5,9 +5,9 @@ function SMALLLABS_main(file_or_directory_name,dfrlmsz,avgwin,moloffwin,varargin
 %%%% GitHub please visit https://github.com/BiteenMatlab/SMALL-LABS to
 %%%% obtain the most up-to-date version of this code.
 %
-% SMALLLABS_main is the wrapper function to do real background substraction of
-% single molecule imaging movies so that the molecules can be fit and their
-% intensity accurately measured using the SMALL-LABS algorithm.
+% SMALLLABS_main is the wrapper function for the SMALL-LABS algorithm which
+% does accurate background substraction of single molecule imaging movies
+% so that the molecules can be fit and their intensity accurately measured.
 %
 % Note: that by setting bgsub=false SMALLLABS_main will do fitting without doing
 % background subtraction. Doing this obviates a lot of parameters, it
@@ -16,25 +16,26 @@ function SMALLLABS_main(file_or_directory_name,dfrlmsz,avgwin,moloffwin,varargin
 %
 %%%% Inputs %%%%
 %%% required
-%   directoryname   is the name of the directory where the movies will be
-%   selected, if there is an error finding the directory the program will
-%   open uigetfile in the current working directory
+%   file_or_directory_name   is the name of the directory where the movies
+%   will be selected OR the filename of a single movie OR a list of movies
+%   to be fit. See the User Guide for more details and/or Movie2mat for
+%   details about the file formats currently supported.
 %
 %   dfrlmsz   is the size of a diffraction limited spot in pixels. It's the
-%   nominal diameter, NOT the FWHM or something similar. Must be an integer!
-%   For an expected diffraction limited standard deviation, std, using the
-%   full width at 20% max, dfrlmsz = std*(2*sqrt(2*log(5)))
+%   nominal diameter, NOT the FWHM or something similar. Must be an
+%   integer! For an expected diffraction limited standard deviation, std,
+%   using the full width at 20% max, dfrlmsz = std*(2*sqrt(2*log(5)))
 %
-%   avgwin   is the width of the temporal window (in frames) to be used for
-%   the average subtraction. Needs to be an odd integer
+%   avgwin   is the length of the temporal window (in frames) to be used
+%   for the average subtraction.
 %
-%   moloffwin   is the width of the temporal window (in frames) to be
+%   moloffwin   is the length of the temporal window (in frames) to be
 %   checked to determine in which frames that molecule was off and are thus
-%   safe to subtract. Needs to be an even integer
+%   safe to subtract. Needs to be an even integer.
 %
 %%% optional (varargin)
 % See the list of optional parameters in parameters section below, details
-% can be found in the user guide. They are called with a name value pair as
+% can be found in the User Guide. They are called with a name value pair as
 % is standard for Matlab functions. e.g., 'bpthrsh',83 would set the
 % parameter bpthrsh=83
 %
@@ -45,9 +46,8 @@ function SMALLLABS_main(file_or_directory_name,dfrlmsz,avgwin,moloffwin,varargin
 % details
 %
 %%%% Dependencies %%%%
-% AVGSUB_tiffs
-% saveastiff
-% TIFFStack
+% AVGSUB_moves
+% TIFFStack 
 % Guessing
 % bpass
 % Mol_off_frames
@@ -60,12 +60,14 @@ function SMALLLABS_main(file_or_directory_name,dfrlmsz,avgwin,moloffwin,varargin
 % hungarian
 % ViewFits
 % ViewFitsTracking
+% gpufit
+% Movie2mat
 %
 %%%%
 % Written by Benjamin P Isaacoff at the University of Michigan last update
-% 12/12/17 BPI
+% 3/10/18 BPI & SAL
 %
-%     Copyright (C) 2017  Benjamin P Isaacoff
+%     Copyright (C) 2018  Benjamin P Isaacoff
 %
 %     This program is free software: you can redistribute it and/or modify
 %     it under the terms of the GNU General Public License as published by
@@ -83,21 +85,19 @@ function SMALLLABS_main(file_or_directory_name,dfrlmsz,avgwin,moloffwin,varargin
 %% Parameter Defaults
 % You are of course welcome to change the default values, but I would
 % strongly urge you to instead set them as inputs to the function using a
-% name value pair (e.g., 'bpthrsh',83). Please see the user guide for
+% name value pair (e.g., 'bpthrsh',83). Please see the User Guide for
 % details about the meaning and function of these parameters. The default
 % parameter values are:
 
 %%% Actions %%%
-% Overwrite .mov movie if a .mov version of the movie already exists
-params.overwritemov = false;
 % Do background subtraction
 params.bgsub = true;
 % Make the average subtracted movie
 params.makeAvgsub = true;
 % Do guessing
-params.makeGuesses = true;
-% Check guesses
-params.check_guesses = false;
+params.guessing = true;
+% Check the guesses
+params.checkGuesses = false;
 % Make the off frames list
 params.makeOffFrames = true;
 % Do fitting
@@ -108,20 +108,20 @@ params.tracking = true;
 params.makeViewFits = true;
 
 %%% AVGSUB parameters %%%
-% subtract the temporal average? otherwise use median
+% Subtract the temporal average? otherwise use median
 params.do_avg = true;
 % AVGSUB offset
 params.offset = 1000;
 
 %%% Guessing parameters %%%
-% the threshold percentile on the banpassed movie
+% the threshold percentile of the banpassed movie
 params.bpthrsh = 95;
 % how many pixels to ignore around the edge of the frame
 params.egdesz = dfrlmsz;
 % compare brightnesses in each frame? otherwise use entire movie
 params.pctile_frame = false;
-% use a mask for guessing? What is it's filename? Set to true to look for .mat
-% file w/ '_PhaseMask' appended to movie name
+% use a mask for guessing? Enter it's filename or set to true to look
+% for .mat file w/ '_PhaseMask' appended to movie name
 params.mask_fname=[];
 % make a movie (.avi) of the guesses to check parameters
 params.make_guessmovie = false;
@@ -137,8 +137,11 @@ params.do_avgsub = true;
 % Which Gaussian function to fit to when using LSQ fitting? 1. symmetric,
 % 2. fixed angle asymmetric, 3. free angle asymmetric
 params.which_gaussian = 1;
-params.fit_ang=0;
-params.usegpu=1;
+% the angle to fit to for a fixed angle Gaussian
+params.fit_ang= 0;
+% use a GPU if one is a available?
+params.usegpu= true;
+
 %%% Tracking parameters %%%
 % default is [0.01,200,0.5,3,3,1,0]
 % save the separate tracks .mat file?
@@ -179,10 +182,7 @@ paramsnames=fieldnames(params);
 % if any parameters are included as inputs, change the parameter mentioned
 if nargin>4
     for ii=1:2:nargin-5
-        whichField = strcmp(paramsnames,varargin{ii});
-        %         if all(~whichField)
-        %             warning('Check spelling. Parameter change may have not occurred.')
-        %         end
+        whichField = strcmp(paramsnames,varargin{ii});       
         try
             eval(['params.' paramsnames{whichField} ' = varargin{ii+1};'])
         catch
@@ -195,6 +195,8 @@ end
 if params.MLE_fit && params.maxerr==3
     params.maxerr=0.1;
 end
+
+% verify that a GPU is available to use if usegpu==true
 if params.usegpu
     params.usegpu=parallel.gpu.GPUDevice.isAvailable;
 end
@@ -203,9 +205,9 @@ end
 % parameter. You should really input what you mean.
 if dfrlmsz~=round(dfrlmsz);error('dfrlmsz must be an integer');end
 
-%Rounding avgwin & moloffwin and reseting them to proper values. Not
-%erroring because they are "weak" parameters. Only needed if doing bgsub
-if params.bgsub
+%Rounding moloffwin and reseting it to proper values. Not
+%erroring because it's a "weak" parameter. Only needed if doing bgsub
+if params.bgsub && params.makeOffFrames
     if moloffwin~=(ceil(moloffwin/2)*2)
         moloffwin=(ceil(moloffwin/2)*2);
         warning(['moloffwin must be an even integer. It has been reset to avgwin = ',num2str(moloffwin)])
@@ -283,11 +285,12 @@ wholeshabang=tic;
 for ii=1:numel(dlocs)
     clear goodframe
     try; waitbar((7*ii-6)/numel(dlocs)/7,h2); end
+    
     %% Convert the movies to .mat
     % Movies must be version 7.3 mat files with the movie data saved in the
     % 'mov' variable. This function converts several standard scientific movie
     % data types into this format.
-    Movie2mat([dlocs{ii},filesep,dnames{ii},exts{ii}],params.overwritemov)
+    Movie2mat([dlocs{ii},filesep,dnames{ii},exts{ii}])
     
     load([dlocs{ii},filesep,dnames{ii},'.mat'],'mov');
     mov=single(mov);
@@ -300,14 +303,16 @@ for ii=1:numel(dlocs)
         goodframe=true(movsz(3),1);
     end
     %% The Average Subtraction
-    % Only if doing bgsub.
-    % check which of the selected movies already have the avgsub tif stack
-    % made, if not then make it. If you want to remake the avgsub movie, then
-    % delete it or movie it from the directory
+    % Only if doing bgsub.     
+    % Because this step can be somewhat slow, first there is a check to
+    % determine if the avgsub movie has already been created. If so, then
+    % there's a further check to determine whether or not any of the
+    % parameters have changed. If they're identical, this step is skipped.
+    % To bypass this process, simply delete the avgsub movie from the
+    % directory.
     
-    % AVGSUB_tiffs will save an average subtracted .tif stack, called
-    % moviename_avgsub.tif and write a .txt file with the parameters, called
-    % moviename_avgsub_info.txt
+    % AVGSUB_movs will save an average subtracted movie .mat file, called
+    % moviename_avgsub.mat 
     if params.makeAvgsub && params.bgsub
         if exist([dlocs{ii},filesep,dnames{ii},'_avgsub.mat'],'file')~=0
             avgsubparams=load([dlocs{ii},filesep,dnames{ii},'_avgsub.mat'],'subwidth','offset','do_avg','goodframe');
@@ -323,15 +328,13 @@ for ii=1:numel(dlocs)
             try; waitbar((7*ii-5)/numel(dlocs)/7,h2,{['Running AVGSUB on ',dnames{ii}],'Overall Progress'}); end
             bgsub_mov=AVGSUB_movs([dlocs{ii},filesep,dnames{ii}],mov,goodframe,...
                 params.do_avg,avgwin,params.offset);
-        end
-        
+        end        
     end
     
     %% Make Guesses
-    % Only if doing bgsub.
     % loop through each movie and make the guesses, which will be saved in a
     % .mat file called moviename_guesses.mat
-    if params.makeGuesses
+    if params.guessing
         try; waitbar((7*ii-4)/numel(dlocs)/7,h2,{['Making guesses for ',dnames{ii}],'Overall Progress'}); end
         if params.bgsub
             % try loading in the bgsub movie
@@ -345,22 +348,23 @@ for ii=1:numel(dlocs)
             end
             if params.bgsub
                 Guessing([dlocs{ii},filesep,dnames{ii},'_avgsub'],bgsub_mov,movsz,goodframe,dfrlmsz,...
-                    params.bpthrsh,params.egdesz,params.pctile_frame,params.check_guesses,...
+                    params.bpthrsh,params.egdesz,params.pctile_frame,params.checkGuesses,...
                     params.mask_fname,params.make_guessmovie);
             else
                 Guessing([dlocs{ii},filesep,dnames{ii}],mov,movsz,goodframe,dfrlmsz,...
-                    params.bpthrsh,params.egdesz,params.pctile_frame,params.check_guesses,...
+                    params.bpthrsh,params.egdesz,params.pctile_frame,params.checkGuesses,...
                     params.mask_fname,params.make_guessmovie);
             end
         else
             Guessing([dlocs{ii},filesep,dnames{ii}],mov,movsz,goodframe,dfrlmsz,...
-                params.bpthrsh,params.egdesz,params.pctile_frame,params.check_guesses,...
+                params.bpthrsh,params.egdesz,params.pctile_frame,params.checkGuesses,...
                 params.mask_fname,params.make_guessmovie);
         end
         clear bgsub_mov
     end   
     %% Make the off frames list
-    % loop through all of the movies and using the guesses .mat file will write
+    % Only if doing bgsub. 
+    % Loop through all of the movies and using the guesses .mat file, will write
     % the off frames list to a .mat file, called guessesname_Mol_off_frames.mat
     if params.makeOffFrames && params.bgsub
         try; waitbar((7*ii-3)/numel(dlocs)/7,h2,{['Making off-frames lists for ',dnames{ii}],'Overall Progress'}); end
@@ -379,12 +383,12 @@ for ii=1:numel(dlocs)
         clear guesses
     end
     %% Subtract and fit
-    % If not doing bgsub then a string ('nobgsub') is sent to Subtract_then_fit
-    % which will proceed accordingly.
-    % loop through the movies and fit the subtracted images using the off
+    % If not doing bgsub then a string ('nobgsub') is sent to
+    % Subtract_then_fit which will proceed accordingly.     
+    % Loop through the guesses and fit the subtracted images using the off
     % frames list. If doing bgsub outputs a .mat file, called
-    % moviename_AccBGSUB_fits.mat, otherwise if not doing bgsub, it's called
-    % moviename_fits.mat.
+    % moviename_AccBGSUB_fits.mat, otherwise if not doing bgsub, it's
+    % called moviename_fits.mat.
     if params.fitting
         try; waitbar((7*ii-2)/numel(dlocs)/7,h2,{['Fitting ',dnames{ii}],'Overall Progress'}); end
         if params.bgsub
@@ -423,10 +427,10 @@ for ii=1:numel(dlocs)
     end
     
     %% Tracking
-    % loop through each movie and does tracking and appends the tracks to the
-    % fits .mat file. Also will append a logical vector called trk_filt which
-    % indicates if the fit passed was successfully tracked and wasn't the first
-    % or last frame in a track
+    % Does tracking and appends the tracks to the fits .mat file. Also will
+    % append a logical vector called trk_filt which indicates if the fit
+    % passed was successfully tracked and wasn't the first or last frame in
+    % a track.
     if params.tracking
         try; waitbar((7*ii-1)/numel(dlocs)/7,h2,{['Tracking ',dnames{ii}],'Overall Progress'}); end
         if params.bgsub
@@ -456,9 +460,8 @@ for ii=1:numel(dlocs)
     end
     
     %% Make the ViewFits movie
-    % loop through each movie and make a ViewFits movie, or just go into debug
-    % mode, to look at the results. Outpits an avi file called
-    % moviename_ViewFits.avi
+    % Make a ViewFits movie, or just go into debug mode, to look at the
+    % results. Outpits an avi file called moviename_ViewFits.avi
     if params.makeViewFits
         try; waitbar((7*ii)/numel(dlocs)/7,h2,{['Making Viewfits ',dnames{ii}],'Overall Progress'}); end
         if params.bgsub
