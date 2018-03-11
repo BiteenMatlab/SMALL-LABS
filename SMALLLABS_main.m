@@ -446,15 +446,15 @@ for ii=1:numel(dlocs)
             % track it
             if params.bgsub
                 Track_filter([dlocs{ii},filesep,dnames{ii},'_AccBGSUB_fits.mat'],fits,...
-                    1,params.trackparams,params.savetracks);
+                    params.trackparams,params.savetracks);
             else
                 Track_filter([dlocs{ii},filesep,dnames{ii},'_fits.mat'],fits,...
-                    1,params.trackparams,params.savetracks);
+                    params.trackparams,params.savetracks);
             end
         else            
             load([dlocs{ii},filesep,dnames{ii},'_fits.mat'],'fits')
             Track_filter([dlocs{ii},filesep,dnames{ii},'_fits.mat'],fits,...
-                1,params.trackparams,params.savetracks);
+                params.trackparams,params.savetracks);
         end
         clear fits
     end

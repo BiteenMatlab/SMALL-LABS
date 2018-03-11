@@ -1,4 +1,4 @@
-function [trk_filt,tracks]= Track_filter(fits_fname,fits,append_vec,trackparams,savetracks)
+function [trk_filt,tracks]= Track_filter(fits_fname,fits,trackparams,savetracks)
 %% Track_filter
 % written BPI 6/7/16
 % Track_filter is a function to filter based on tracking. Currently just
@@ -9,9 +9,6 @@ function [trk_filt,tracks]= Track_filter(fits_fname,fits,append_vec,trackparams,
 % goodfit boolean
 % 
 % fits is the fits structure from Subtract_then_fit.m
-%
-% append_vec is a boolean determining whether trk_filt will be appended to
-% the fit .mat file.
 %
 % trackparams are the tracking parameters, definitions and defaults below
 %
@@ -42,9 +39,6 @@ function [trk_filt,tracks]= Track_filter(fits_fname,fits,append_vec,trackparams,
 %     You should have received a copy of the GNU General Public License
 %     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 %
-
-if nargin<3;append_vec=0;end
-if nargin<5;savetracks=0;end
 
 %% Default tracking parameters
 if nargin<3
@@ -91,9 +85,8 @@ else
     trk_filt=false(size(fits.frame,1),1);
 end
 
-if append_vec
-    save(fits_fname,'trk_filt','-append')
-end
+save(fits_fname,'trk_filt','-append')
+
 
 end
 
