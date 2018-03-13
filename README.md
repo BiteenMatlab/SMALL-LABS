@@ -8,13 +8,13 @@ Written by Benjamin P Isaacoff at the University of Michigan.
 
 ## Installation
 
-Download the entire folder and unzip if you downloaded the .zip folder. Move the @TIFFStack directory to your MATLAB home directory. Change the working directory in Matlab to this folder and simply call the functions in the command window as described in the User Guide.
+Download the entire folder and unzip if you downloaded the .zip folder. Change the working directory in Matlab to this folder and call the functions in the command window as described in the User Guide.
 
 ## Usage
 
 See the Quick Start Guide for a quick introduction to using *SMALLLABS_main*. 
 
-See the User Guide for the details. Briefly, the function *SMALLLABS_main* is a wrapper for the other code to perform all of the steps in the correct order. Simply run *SMALLLABS_main* by specifying the directory containing your TIFF stack movies, specify the three required parameters, and any optional parameters, then run it and click to choose the movies you want to fit. Or run the various programs independently.
+See the User Guide for the details. Briefly, the function *SMALLLABS_main* is a wrapper for the other code to perform all of the steps in the correct order. Simply run *SMALLLABS_main* by specifying the directory containing your movies, specify the three required parameters, and any optional parameters, then run it and click to choose the movies you want to fit. Or run the various programs independently.
 
 ## Contributing
 
@@ -39,7 +39,7 @@ The code not written by BPI:
 *MLEwG* by KI Mortensen, LS Churchman, JA Spudich, H Flyvbjerg  
 *gaussFit* by David J Rowland  
 *Track_3D2* by David J Rowland   
-*hungarian* by Yi Cao
+*hungarian* by Yi Cao  
 *gpufit* by Adrian Przybylski, Björn Thiel, Jan Keller-Findeisen, Bernd Stock, and Mark Bates
 
 ## License
