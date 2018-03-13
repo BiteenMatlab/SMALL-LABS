@@ -74,9 +74,10 @@ tic;%for measuring the time to run the entire program
 %% Constructing off frames lists
 
 [pathstr,fname,~] = fileparts(guessfname);
-
+global verbose
+if verbose
 disp([char(datetime),'   Making off-frames lists for ',fname])
-
+end
 %load in the guesses & the movie size
 %cell array of off frames vectors, for each localization (each row of
 %guesses) a list of frames to include

@@ -101,12 +101,13 @@ function  fits=Subtract_then_fit(mov_fname,mov,movsz,...
 %     You should have received a copy of the GNU General Public License
 %     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 %
+global verbose
 subnfit=tic;%for measuring the time to run the entire program
 
 [pathstr,fname] = fileparts(mov_fname);
-
+if verbose
 disp([char(datetime),'   Fitting ',fname])
-
+end
 % plot_on is for debugging
 plot_on=0;
 % check if a GPU is available
@@ -251,7 +252,7 @@ if usegpu
     end
     fits.err=(1-chi_squares./sum((dataset-mean(dataset,1)).^2))';
     if MLE_fit
-        errbad=fits.err<maxerr | states~=1;
+        errbad=fits.err<maxerr | states~=0;
     else
         errbad=fits.err<maxerr;
     end

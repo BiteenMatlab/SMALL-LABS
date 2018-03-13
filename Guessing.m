@@ -82,15 +82,15 @@ if dfrlmsz~=round(dfrlmsz);error('dfrlmsz must be an integer');end
 
 %pad size for the bandpass function
 pdsz=50;
-
+global verbose
 tic;%for measuring the time to run the entire program
 % last updated 3/10/18 BPI
 %% Setup
 
 [pathstr,fname] = fileparts(mov_fname);
-
+if verbose
 disp([char(datetime),'   Making guesses for ',fname])
-
+end
 %intializing the guess indices cell array
 guesses=zeros(1,3);
 

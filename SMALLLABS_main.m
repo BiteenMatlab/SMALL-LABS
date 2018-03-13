@@ -82,6 +82,9 @@ function SMALLLABS_main(file_or_directory_name,dfrlmsz,avgwin,moloffwin,varargin
 %     You should have received a copy of the GNU General Public License
 %     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 %
+
+global verbose
+verbose=true; %Set verbose to true to have matlab print the current step and date/time to the command window. Otherwise set to false
 %% Parameter Defaults
 % You are of course welcome to change the default values, but I would
 % strongly urge you to instead set them as inputs to the function using a

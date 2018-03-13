@@ -65,9 +65,10 @@ end
 trk_filt=false(size(fits.frame,1),1);
 
 [~,fname] = fileparts(fits_fname);
-
+global verbose
+if verbose
 disp([char(datetime),'   Tracking ',fname])
-
+end
 tracks = Tracking(fits_fname,fits,trackparams,savetracks);
 if ~isempty(tracks)
     save(fits_fname,'tracks','trackparams','-append')

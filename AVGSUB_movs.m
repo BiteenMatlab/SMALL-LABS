@@ -41,9 +41,10 @@ tic;%for measuring the time to run the entire program
 
 %% Setup
 [pathstr,fname] = fileparts(filename);
-
+global verbose
+if verbose
 disp([char(datetime),'   Running AVGSUB for ',fname])
-
+end
 %change the bad frames as determined by the goodframe list to NaNs
 mov(:,:,~goodframe)=NaN;
 

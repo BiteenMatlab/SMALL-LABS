@@ -44,9 +44,10 @@ if nargin<6;linewidth=1;end
 %% setup
 
 [pathstr,name,ext] = fileparts(movfname);
-
+global verbose
+if verbose
 disp([char(datetime),'   Making ViewFitsTracking movie for ',name])
-
+end
 %look for a goodframe list, otherwise set all frames as goodframes
 
 if write_mov
