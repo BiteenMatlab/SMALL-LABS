@@ -62,12 +62,13 @@ goodfits(:,1)=fits.frame(fits.goodfit);%frame number
 goodfits(:,9)=fits.row(fits.goodfit);%x position
 goodfits(:,11)=fits.col(fits.goodfit);%y position
 goodfits(:,14)=fits.sum(fits.goodfit);%intensity
+goodfits(:,21)=fits.roinum(fits.goodfit);% Cell# or ROI#
 
 trfile=Track_3D2(goodfits,trackparams(1),alpha,trackparams(3),trackparams(5),trackparams(6),...
     1,trackparams(7),trackparams(2));
 
 if savetracks
-    save([fits_fname,'_tracks'],'trfile','trackparams','-v7.3')
+    save(strrep(fits_fname,'.mat','_tracks.mat'),'trfile','trackparams','-v7.3')
 end
 
 if ~isempty(trfile)

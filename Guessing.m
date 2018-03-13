@@ -93,7 +93,7 @@ disp([char(datetime),'   Making guesses for ',fname])
 end
 %intializing the guess indices cell array
 guesses=zeros(1,3);
-
+roinum=0;
 %% Guessing
 
 %making the phasemask logical map
@@ -105,10 +105,11 @@ if ~isempty(mask_fname)
     else
         load(mask_fname,'PhaseMask.mat')
     end
-    PhaseMask(PhaseMask~=0)=1;
-    PhaseMask=logical(PhaseMask);
+    PhaseMasklg=PhaseMask;
+    PhaseMasklg(PhaseMasklg~=0)=1;
+    PhaseMasklg=logical(PhaseMasklg);
 else
-    PhaseMask=true(movsz([1,2]));
+    PhaseMasklg=true(movsz([1,2]));
 end
 
 %using the percentiles on the entire movie
@@ -139,7 +140,7 @@ if ~pctile_frame
     %convert it to a logical movie by thresholding with the bpthrsh
     %percentile of the brightnesses for nonzero pixels
     bimgmov=logical(bimgmov.*(bimgmov>prctile(bimgmov(bimgmov>0 & ...
-        goodfrmmov & repmat(PhaseMask,[1,1,movsz(3)])),bpthrsh)).*repmat(PhaseMask,[1,1,movsz(3)]));
+        goodfrmmov & repmat(PhaseMasklg,[1,1,movsz(3)])),bpthrsh)).*repmat(PhaseMasklg,[1,1,movsz(3)]));
 end
 
 if make_guessmovie
@@ -171,7 +172,7 @@ for ll=1:movsz(3)
             
             %threshold with the bpthrsh percentile of the brightnesses for
             %nonzero pixels, then turn it into a logical array
-            logim=logical(bimg.*(bimg>prctile(bimg(bimg>0 & PhaseMask),bpthrsh)).*PhaseMask);
+            logim=logical(bimg.*(bimg>prctile(bimg(bimg>0 & PhaseMasklg),bpthrsh)).*PhaseMasklg);
         else
             logim=bimgmov(:,:,ll);
         end
@@ -184,6 +185,7 @@ for ll=1:movsz(3)
         %filling the array for this frame
         if ~isempty(centroids)
             guesses=cat(1,guesses,[repmat(ll,size(centroids(:,2))),round(centroids(:,2)),round(centroids(:,1))]);
+            roinum=[roinum;diag(PhaseMask(round(centroids(:,2)),round(centroids(:,1))))];
         end
         
         if debugmode || make_guessmovie %plot the guesses, for checking parameters
@@ -207,7 +209,7 @@ for ll=1:movsz(3)
     end
 end
 guesses=guesses(2:end,:);%get rid of first row of zeros
-
+roinum(1)=[];
 if make_guessmovie
     close(v)
     keyboard
@@ -217,7 +219,7 @@ tictoc=toc;%the time to run the entire program
 
 [pathstr,name,~] = fileparts(mov_fname);
 save([pathstr,filesep,name,'_guesses.mat'],'guesses','goodframe','dfrlmsz','egdesz','pctile_frame','bpthrsh',...
-    'movsz','tictoc','mask_fname','-v7.3');
+    'movsz','tictoc','mask_fname','roinum','-v7.3');
 
 end
 

@@ -1,5 +1,5 @@
 function  fits=Subtract_then_fit(mov_fname,mov,movsz,...
-    off_frames,moloffwin,guesses,dfrlmsz,MLE_fit,stdtol,...
+    off_frames,moloffwin,guesses,roinum,dfrlmsz,MLE_fit,stdtol,...
     maxerr,do_avgsub,which_gaussian,fit_ang,usegpu)
 %% Subtract_mol_off_frames
 % subtracts the average (or median) intensity of off frames for each guess
@@ -511,6 +511,7 @@ else
 end
 tictoc=toc(subnfit);%the time to run the entire program
 %save the data
+fits.roinum=roinum;
 if bgsub
     fname=[pathstr,filesep,fname,'_AccBGSUB_fits.mat'];
 else

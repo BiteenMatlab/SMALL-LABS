@@ -84,10 +84,7 @@ function SMALLLABS_main(file_or_directory_name,dfrlmsz,avgwin,moloffwin,varargin
 %
 
 global verbose
-% Set verbose to true to have matlab print the current step and date/time to 
-% the command window. Otherwise set to false
-verbose=true;
-
+verbose=true; %Set verbose to true to have matlab print the current step and date/time to the command window. Otherwise set to false
 %% Parameter Defaults
 % You are of course welcome to change the default values, but I would
 % strongly urge you to instead set them as inputs to the function using a
@@ -408,25 +405,25 @@ for ii=1:numel(dlocs)
             end            
             if params.bgsub
                 % load in the guesses
-                load([dlocs{ii},filesep,dnames{ii},'_avgsub_guesses.mat'],'guesses');
+                load([dlocs{ii},filesep,dnames{ii},'_avgsub_guesses.mat'],'guesses','roinum');
                 % fit it
                 Subtract_then_fit([dlocs{ii},filesep,dnames{ii}],mov,movsz,...
-                    off_frames,moloffwin,guesses,dfrlmsz,params.MLE_fit,params.stdtol,...
+                    off_frames,moloffwin,guesses,roinum,dfrlmsz,params.MLE_fit,params.stdtol,...
                     params.maxerr,params.do_avgsub,params.which_gaussian,params.fit_ang,params.usegpu);
             else
                 % load in the guesses
-                load([dlocs{ii},filesep,dnames{ii},'_guesses.mat'],'guesses','dfrlmsz')
+                load([dlocs{ii},filesep,dnames{ii},'_guesses.mat'],'guesses','rounum','dfrlmsz')
                 % fit it
                 Subtract_then_fit([dlocs{ii},filesep,dnames{ii}],mov,movsz,...
-                    'nobgsub','nobgsub',guesses,dfrlmsz,params.MLE_fit,params.stdtol,...
+                    'nobgsub','nobgsub',guesses,roinum,dfrlmsz,params.MLE_fit,params.stdtol,...
                     params.maxerr,params.do_avgsub,params.which_gaussian,params.fit_ang,params.usegpu);
             end
         else
             % load in the guesses
-            load([dlocs{ii},filesep,dnames{ii},'_guesses.mat'],'guesses','dfrlmsz')
+            load([dlocs{ii},filesep,dnames{ii},'_guesses.mat'],'guesses','roinum','dfrlmsz')
             % fit it
             Subtract_then_fit([dlocs{ii},filesep,dnames{ii}],mov,movsz,...
-                'nobgsub','nobgsub',guesses,dfrlmsz,params.MLE_fit,params.stdtol,...
+                'nobgsub','nobgsub',guesses,roinum,dfrlmsz,params.MLE_fit,params.stdtol,...
                 params.maxerr,params.do_avgsub,params.which_gaussian,params.fit_ang,params.usegpu);
         end
         clear guesses off_frames
