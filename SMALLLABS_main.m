@@ -84,7 +84,10 @@ function SMALLLABS_main(file_or_directory_name,dfrlmsz,avgwin,moloffwin,varargin
 %
 
 global verbose
-verbose=true; %Set verbose to true to have matlab print the current step and date/time to the command window. Otherwise set to false
+% Set verbose to true to have matlab print the current step and date/time to 
+% the command window. Otherwise set to false
+verbose=true;
+
 %% Parameter Defaults
 % You are of course welcome to change the default values, but I would
 % strongly urge you to instead set them as inputs to the function using a
