@@ -74,7 +74,7 @@ end
 if ~isempty(trfile)
     %get rid of useless fits from the tracking program
     % tracks is made of 1: frame #, 2: x (px), 3: y (px), 4: track #
-    tracks=trfile(:,[2,4,5,1]);
+    tracks=trfile(:,[2,4,5,1,13]);
 else
     warning('Not enough goodfits to contruct tracks')
     tracks=[];

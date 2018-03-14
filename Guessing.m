@@ -89,7 +89,7 @@ tic;%for measuring the time to run the entire program
 
 [pathstr,fname] = fileparts(mov_fname);
 if verbose
-disp([char(datetime),'   Making guesses for ',fname])
+    disp([char(datetime),'   Making guesses for ',fname])
 end
 %intializing the guess indices cell array
 guesses=zeros(1,3);
@@ -101,15 +101,25 @@ if ~isempty(mask_fname)
     if mask_fname
         %the strrep is to get rid of the avgsub, note that this shouldn't
         %do anything if bgsub=0
-        load([pathstr,filesep,strrep(fname,'_avgsub',[]),'_PhaseMask.mat'],'PhaseMask')
+        try
+            load([pathstr,filesep,mask_fname,'.mat'],'PhaseMask')
+        catch
+            [datalist,dataloc,~]=uigetfile([pathstr,filesep,'*.*']);
+            if ~iscell(datalist); datalist={datalist}; end
+            datalist=[dataloc datalist];
+            [dlocs,dnames,~]=cellfun(@fileparts,datalist,'uniformoutput',false);
+            load([dlocs{1,1},filesep,dnames{1,2}],'PhaseMask')
+        end
     else
-        load(mask_fname,'PhaseMask.mat')
+        load([pathstr,filesep,strrep(fname,'_avgsub',[]),'_PhaseMask.mat'],'PhaseMask')
+        
     end
     PhaseMasklg=PhaseMask;
     PhaseMasklg(PhaseMasklg~=0)=1;
     PhaseMasklg=logical(PhaseMasklg);
 else
     PhaseMasklg=true(movsz([1,2]));
+    PhaseMask=true(movsz([1,2]));
 end
 
 %using the percentiles on the entire movie
@@ -150,12 +160,12 @@ if make_guessmovie
     disp(['Making guesses movie for ',fname]);
 end
 
-for ll=1:movsz(3)    
+for ll=1:movsz(3)
     if goodframe(ll)
         %using the percentile on each frame
         if pctile_frame
             %padding the current frame to avoid the Fourier ringing
-            %associated with the edges of the image            
+            %associated with the edges of the image
             curfrm=mov(:,:,ll);
             
             curfrmbp=padarray(curfrm,[pdsz,pdsz],'symmetric');
