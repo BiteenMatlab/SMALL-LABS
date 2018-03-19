@@ -96,7 +96,7 @@ for ii=1:numel(dlocs)
         %setup the matfile
         mov='tempvariable';
         save([dlocs{ii},filesep,dnames{ii}],'mov','-v7.3');
-        matio=matfile([dlocs{ii},filesep,dnames{ii}]);
+        matio=matfile([dlocs{ii},filesep,dnames{ii},'.mat']);
         matio.Properties.Writable=true;
         
         %check how big the file is and compare to the available memory so

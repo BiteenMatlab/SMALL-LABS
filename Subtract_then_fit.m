@@ -1,5 +1,5 @@
 function  fits=Subtract_then_fit(mov_fname,mov,movsz,...
-    off_frames,moloffwin,guesses,roinum,dfrlmsz,MLE_fit,stdtol,...
+    off_frames,moloffwin,guesses,dfrlmsz,MLE_fit,stdtol,...
     maxerr,do_avgsub,which_gaussian,fit_ang,usegpu)
 %% Subtract_mol_off_frames
 % subtracts the average (or median) intensity of off frames for each guess
@@ -101,13 +101,12 @@ function  fits=Subtract_then_fit(mov_fname,mov,movsz,...
 %     You should have received a copy of the GNU General Public License
 %     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 %
-global verbose
 subnfit=tic;%for measuring the time to run the entire program
 
 [pathstr,fname] = fileparts(mov_fname);
-if verbose
+
 disp([char(datetime),'   Fitting ',fname])
-end
+
 % plot_on is for debugging
 plot_on=0;
 % check if a GPU is available
@@ -141,7 +140,9 @@ molr=guesses(:,2);
 molc=guesses(:,3);
 fits.frame=guesses(:,1);
 framelist=guesses(:,1);
-
+if MLE_fit && usegpu
+offset=NaN(1,size(guesses,1));
+end
 %looping through all the guesses
 if bgsub
     for ii=1:size(guesses,1)
@@ -164,16 +165,20 @@ if bgsub
         data=molim-mean_mov;
         data=reshape(data,[],1);
         gessb=min(data(:));
+        gessN=range(data(:));
+        if MLE_fit && ~usegpu
         %the guessed amplitude, using the formula in MLEwG
         gessN=range(data(:))*(4*pi*gesss^2);
+        end
         if usegpu
             params0=[gessN;dfrlmsz;dfrlmsz;gesss;gessb];
         else
             params0=[dfrlmsz,dfrlmsz,gesss,gessb,gessN];
         end
         if MLE_fit && usegpu
-            dataset(:,ii)=data+4*abs(min(data));
-            params0(5)=min(data)+4*abs(min(data));
+            dataset(:,ii)=data+2*abs(min(data));
+            offset(1,ii)=2*abs(min(data));
+            params0(5)=abs(min(data));
             initial_parameters(:,ii)=params0;
         else
             initial_parameters(:,ii)=params0;
@@ -198,14 +203,8 @@ else
         else
             params0=[dfrlmsz;dfrlmsz;gesss;gessb;gessN];
         end
-        if MLE_fit && usegpu
-            dataset(:,ii)=data+4*abs(min(data));
-            params0(5)=min(data)+4*abs(min(data));
-            initial_parameters(:,ii)=params0;
-        else
-            initial_parameters(:,ii)=params0;
-            dataset(:,ii)=data;
-        end
+        initial_parameters(:,ii)=params0;
+        dataset(:,ii)=data;
     end
 end
 %%%% Fitting %%%%
@@ -240,7 +239,7 @@ if usegpu
     
     fits.amp=parameters(1,:)';
     if MLE_fit
-        fits.offset=(parameters(5,:)-initial_parameters(5,:))';
+        fits.offset=(parameters(5,:)-offset)';
     else
         fits.offset=parameters(5,:)';
     end
@@ -255,11 +254,16 @@ if usegpu
     end
     fits.err=(1-chi_squares./sum((dataset-mean(dataset,1)).^2))';
     if MLE_fit
+        fits.err=(1-chi_squares./sum(2.*((mean(dataset,1)-dataset)-dataset.*log(mean(dataset,1)./dataset))))';
         errbad=fits.err<maxerr | states~=0;
     else
         errbad=fits.err<maxerr;
     end
-    fits.sum=sum(dataset,1)';
+    if MLE_fit && bgsub
+        fits.sum=sum(dataset-offset,1)';
+    else
+        fits.sum=sum(dataset,1)';
+    end
     %determining if it's a goodfit or not (remember this field was
     %initialized to false)
     fits.goodfit=false(size(guesses,1),1);
@@ -514,7 +518,6 @@ else
 end
 tictoc=toc(subnfit);%the time to run the entire program
 %save the data
-fits.roinum=roinum;
 if bgsub
     fname=[pathstr,filesep,fname,'_AccBGSUB_fits.mat'];
 else
