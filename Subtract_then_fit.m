@@ -188,8 +188,11 @@ else
         data=single(mov(curmolr+(-dfrlmsz:dfrlmsz),curmolc+(-dfrlmsz:dfrlmsz),curfrmnum));
         data=reshape(data,[],1);
         gessb=min(data(:));
+        gessN=range(data(:));
+        if MLE_fit && ~usegpu
         %the guessed amplitude, using the formula in MLEwG
         gessN=range(data(:))*(4*pi*gesss^2);
+        end
         if usegpu
             params0=[gessN;dfrlmsz;dfrlmsz;gesss;gessb];
         else
