@@ -1,14 +1,14 @@
 # SMALL-LABS
 
-SMALL-LABS is an algorithm to do real background subtraction of single molecule imaging movies so that the molecules can be fit and their intensity accurately measured even in the presence of an arbitrarily complex low frequency fluorescent background.
+The SMALL-LABS (Single-Molecule Accurate Localization by Local Background Subtraction) algorithm, accurately locates and measures the intensity of single molecules, regardless of the shape or brightness of the background.
 
-The program can also do fitting without doing background subtraction. See the User Guide for more details.
+The program can also fit single molecules without doing background subtraction. See the User Guide for more details.
 
 Written by Benjamin P Isaacoff at the University of Michigan.
 
 ## Installation
 
-Download the entire folder and unzip if you downloaded the .zip folder. Change the working directory in Matlab to this folder and call the functions in the command window as described in the User Guide.
+Download the entire folder and unzip if you downloaded the .zip folder. Change the working directory in Matlab to this folder and call the functions in the Matlab command window as described in the User Guide.
 
 ## Usage
 
@@ -18,7 +18,7 @@ See the User Guide for the details. Briefly, the function *SMALLLABS_main* is a 
 
 ## Contributing
 
-1. Please inform me before making any changes, then follow the directions below: 
+Please inform us (isaacoff@umich.edu) before making any changes, then follow the directions below: 
 1. Fork it!
 2. Create your feature branch: `git checkout -b my-new-feature`
 3. Commit your changes: `git commit -am 'Add some feature'`
@@ -29,7 +29,7 @@ See the User Guide for the details. Briefly, the function *SMALLLABS_main* is a 
 
 All individual programs should have all their individual attributions still in place including authors. 
 
-The development of this code is greatly indebted to the work of David J Rowland (often referred to as DJR in the code), in addition to containing some functions written by him, I’ve borrowed a lot of code snippets from his programs.
+The development of this code is greatly indebted to the work of David J Rowland (often referred to as DJR in the code). In addition to containing some functions written by him, I’ve borrowed a lot of code snippets from his programs.
 
 The code not written by BPI:
 
