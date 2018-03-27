@@ -201,7 +201,11 @@ end
 
 % verify that a GPU is available to use if usegpu==true
 if params.usegpu
-    params.usegpu=parallel.gpu.GPUDevice.isAvailable;
+    try
+        params.usegpu=parallel.gpu.GPUDevice.isAvailable;
+    catch
+         params.usegpu=false;
+    end
 end
 %% Checking the required inputs
 % Erroring out if dfrlmsz isn't an integer, because it's a "strong"
