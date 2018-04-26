@@ -29,6 +29,8 @@ Please inform us (isaacoff@umich.edu) before making any changes, then follow the
 
 All individual programs should have all their individual attributions still in place including authors. 
 
+This code was developed with support from the National Science Foundation (NSF grant CHE-1252322).
+
 The development of this code is greatly indebted to the work of David J Rowland (often referred to as DJR in the code). In addition to containing some functions written by him, I’ve borrowed a lot of code snippets from his programs.
 
 The code not written by BPI:
