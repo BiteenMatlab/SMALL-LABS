@@ -143,7 +143,8 @@ for ii=1:numel(dlocs)
             try
                 clear mov
                 %try using the bio-formats reader
-                matio.mov=bfopen(filename);
+                mov=bfopen(filename);
+                matio.mov=cat(3,mov{1,1}{:,1});
             catch
                 try
                     clear mov

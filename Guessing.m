@@ -98,7 +98,7 @@ roinum=0;
 
 %making the phasemask logical map
 if ~isempty(mask_fname)
-    if mask_fname
+    if ischar(mask_fname)
         %the strrep is to get rid of the avgsub, note that this shouldn't
         %do anything if bgsub=0
         try
