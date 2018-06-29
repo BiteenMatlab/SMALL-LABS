@@ -63,6 +63,7 @@ goodfits(:,9)=fits.row(fits.goodfit);%x position
 goodfits(:,11)=fits.col(fits.goodfit);%y position
 goodfits(:,14)=fits.sum(fits.goodfit);%intensity
 goodfits(:,21)=fits.roinum(fits.goodfit);% Cell# or ROI#
+goodfits(:,22)=fits.molid(fits.goodfit);% Molecule ID#
 
 trfile=Track_3D2(goodfits,trackparams(1),alpha,trackparams(3),trackparams(5),trackparams(6),...
     1,trackparams(7),trackparams(2));
@@ -73,8 +74,9 @@ end
 
 if ~isempty(trfile)
     %get rid of useless fits from the tracking program
-    % tracks is made of 1: frame #, 2: x (px), 3: y (px), 4: track #
-    tracks=trfile(:,[2,4,5,1,13]);
+    % tracks is made of 1: frame #, 2: x (px), 3: y (px), 4: track #, 5:
+    % Cell or ROI #, 6: Molecule ID#
+    tracks=trfile(:,[2,4,5,1,13,9]);
 else
     warning('Not enough goodfits to contruct tracks')
     tracks=[];

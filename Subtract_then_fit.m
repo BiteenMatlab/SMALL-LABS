@@ -139,6 +139,7 @@ initial_parameters=single(NaN(5,size(guesses,1)));
 molr=guesses(:,2);
 molc=guesses(:,3);
 fits.frame=guesses(:,1);
+fits.molid=1:size(guesses,1);
 framelist=guesses(:,1);
 if MLE_fit && usegpu
 offset=NaN(1,size(guesses,1));
@@ -252,7 +253,8 @@ if usegpu
     else
         fits.ang=parameters(6,:);
     end
-    fits.err=(1-chi_squares./sum((dataset-mean(dataset,1)).^2))';
+    fits.err=(1-(chi_squares./((2*dfrlmsz+1)^2-size(parameters,1)))./(sum((dataset-mean(dataset,1)).^2)./size(parameters,1)))';
+    fits.chi_squares=chi_squares;
     if MLE_fit
         fits.err=(1-chi_squares./sum(2.*((mean(dataset,1)-dataset)-dataset.*log(mean(dataset,1)./dataset))))';
         errbad=fits.err<maxerr | states~=0;
@@ -363,14 +365,21 @@ else
     fits.goodfit=false(size(guesses,1),1);%goodfit boolean
     sumsum=fits.sum;
     fit_sd_r=NaN(size(guesses,1),1);
+    fit_sd_rCI=NaN(size(guesses,1),1);
     fit_sd_c=NaN(size(guesses,1),1);
+    fit_sd_cCI=NaN(size(guesses,1),1);
     fit_off=NaN(size(guesses,1),1);
+    fit_offCI=NaN(size(guesses,1),1);
     fit_amp=NaN(size(guesses,1),1);
+    fit_ampCI=NaN(size(guesses,1),1);
     fit_err=NaN(size(guesses,1),1);
     act_r=NaN(size(guesses,1),1);
+    act_rCI=NaN(size(guesses,1),1);
     fit_ang=NaN(size(guesses,1),1);
+    fit_angCI=NaN(size(guesses,1),1);
     act_c=NaN(size(guesses,1),1);
-    parfor ii=1:size(guesses,1) %Trying to make run with parfor, but it gets stuck.
+    act_cCI=NaN(size(guesses,1),1);
+    parfor ii=1:size(guesses,1) %
         if MLE_fit
             %fitting with MLE
             [paramsF,varianceF] = MLEwG (reshape(dataset(:,ii),[2*dfrlmsz+1,2*dfrlmsz+1]),initial_parameters(:,ii)',1,plot_on,1);
@@ -392,26 +401,39 @@ else
             errbad=varianceF>maxerr;%too much error on fit?
         else
             %fitting with least squares
-            [fitPars,~,~,~,resid]=gaussFit(double(reshape(dataset(:,ii),[2*dfrlmsz+1,2*dfrlmsz+1])),'searchBool',0,'nPixels',2*dfrlmsz+1,...
+            [fitPars,conf95,~,~,resid]=gaussFit(double(reshape(dataset(:,ii),[2*dfrlmsz+1,2*dfrlmsz+1])),'searchBool',0,'nPixels',2*dfrlmsz+1,...
                 'checkVals',0,'ffSwitch',which_gaussian);
             %converting the variables to match the output of MLEwG, and
             %arranging for each particular Gaussian fit
             fit_r=fitPars(1);fit_c=fitPars(2);
+            fit_rCI=conf95(1);fit_cCI=conf95(2);
             if which_gaussian==1
                 fit_sd_r(ii)=fitPars(3);fit_sd_c(ii)=fitPars(3);
                 fit_off(ii)=fitPars(5);
                 fit_amp(ii)=fitPars(4);
                 fit_ang(ii)=0;
+                fit_sd_rCI(ii)=conf95(3);fit_sd_cCI(ii)=conf95(3);
+                fit_offCI(ii)=conf95(5);
+                fit_ampCI(ii)=conf95(4);
+                fit_angCI(ii)=0;
             elseif which_gaussian==2
                 fit_sd_r(ii)=fitPars(3);fit_sd_c(ii)=fitPars(4);
+                fit_sd_rCI(ii)=conf95(3);fit_sd_cCI(ii)=conf95(4);
                 fit_off(ii)=fitPars(6);
+                fit_offCI(ii)=conf95(6);
                 fit_amp(ii)=fitPars(5);
+                fit_ampCI(ii)=conf95(5);
                 fit_ang(ii)=0;
+                fit_angCI(ii)=0;
             elseif   which_gaussian==3
                 fit_sd_r(ii)=fitPars(4);fit_sd_c(ii)=fitPars(5);
+                fit_sd_rCI(ii)=conf95(4);fit_sd_cCI(ii)=conf95(5);
                 fit_off(ii)=fitPars(7);
+                fit_offCI(ii)=conf95(7);
                 fit_amp(ii)=fitPars(6);
+                fit_ampCI(ii)=conf95(6);
                 fit_ang(ii)=fitPars(3);
+                fit_angCI(ii)=conf95(3);
             end
             fit_err(ii)=1-(sum(resid.^2)/sum((dataset(:,ii)-mean(dataset(:,ii))).^2));
             errbad=fit_err(ii)<maxerr;%too much error on fit?
@@ -419,6 +441,8 @@ else
         %Convert back into full frame coordinates, NOTE the -1!
         act_r(ii)=fit_r-dfrlmsz-1+molr(ii);
         act_c(ii)=fit_c-dfrlmsz-1+molc(ii);
+        act_rCI(ii)=fit_rCI;
+        act_cCI(ii)=fit_cCI;
         if (mean([fit_sd_r(ii),fit_sd_c(ii)])<=(stdtol*gesss) && mean([fit_sd_r(ii),fit_sd_c(ii)])>=(gesss/stdtol)) && ... %Compare width with diffraction limit
                 ~errbad && ... %too much error on fit?
                 fit_amp(ii)<sumsum(ii) && ... %the amplitude of the fit shouldn't be bigger than the integral
@@ -434,15 +458,21 @@ else
     
     %putting the fit results into the fits structure
     fits.row=act_r;%row coordinate of the fit
+    fits.rowCI=act_rCI;%row coordinate confidence interval of the fit
     fits.col=act_c;%column coordinate of the fit
+    fits.colCI=act_cCI;%column coordinate of the fit
     fits.widthr=fit_sd_r;%standard deviation in the row dimension of the Gaussian fit
+    fits.widthrCI=fit_sd_rCI;%standard deviation in the row dimension of the Gaussian fit
     fits.widthc=fit_sd_c;%standard deviation in the column dimension of the Gaussian fit
+    fits.widthcCI=fit_sd_cCI;%standard deviation in the column dimension of the Gaussian fit
     fits.ang=fit_ang;%angle of asymmetric Gaussian fit
+    fits.angCI=fit_angCI;%Confidence interval of angle of asymmetric Gaussian fit
     fits.offset=fit_off;%offset
+    fits.offsetCI=fit_offCI;%Confidence interval of offset
     fits.amp=fit_amp;%amplitude of Gaussian fit
+    fits.ampCI=fit_ampCI;%Confidence interval of amplitude of Gaussian fit
     fits.err=fit_err;%error on fit
-    fits.goodfit=goodfit';
-    %determining if it's a goodfit or not (remember this field was
+    fits.goodfit=goodfit';%determining if it's a goodfit or not (remember this field was
     %initialized to false)
     
     

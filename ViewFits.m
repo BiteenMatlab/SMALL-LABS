@@ -92,7 +92,7 @@ for ii=1:movsz(3)
     thisfrm_bf=[fits.row(fits.frame==ii & ~fits.goodfit),...
         fits.col(fits.frame==ii & ~fits.goodfit)];
     
-    if exist('trk_filt','var')
+    if ~isempty(trk_filt)
         thisfrm_trk=[fits.row(fits.frame==ii & trk_filt),...
         fits.col(fits.frame==ii & trk_filt)];
     else
