@@ -406,7 +406,6 @@ else
             %converting the variables to match the output of MLEwG, and
             %arranging for each particular Gaussian fit
             fit_r=fitPars(1);fit_c=fitPars(2);
-            fit_rCI=conf95(1);fit_cCI=conf95(2);
             if which_gaussian==1
                 fit_sd_r(ii)=fitPars(3);fit_sd_c(ii)=fitPars(3);
                 fit_off(ii)=fitPars(5);
@@ -441,8 +440,8 @@ else
         %Convert back into full frame coordinates, NOTE the -1!
         act_r(ii)=fit_r-dfrlmsz-1+molr(ii);
         act_c(ii)=fit_c-dfrlmsz-1+molc(ii);
-        act_rCI(ii)=fit_rCI;
-        act_cCI(ii)=fit_cCI;
+        act_rCI(ii)=conf95(1);
+        act_cCI(ii)=conf95(2);
         if (mean([fit_sd_r(ii),fit_sd_c(ii)])<=(stdtol*gesss) && mean([fit_sd_r(ii),fit_sd_c(ii)])>=(gesss/stdtol)) && ... %Compare width with diffraction limit
                 ~errbad && ... %too much error on fit?
                 fit_amp(ii)<sumsum(ii) && ... %the amplitude of the fit shouldn't be bigger than the integral
