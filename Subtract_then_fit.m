@@ -254,7 +254,8 @@ if usegpu
         fits.ang=parameters(6,:);
     end
     fits.err=(1-(chi_squares)./(sum((dataset-mean(dataset,1)).^2)))';
-    fits.chi_squares=chi_squares';    if MLE_fit
+    fits.chi_squares=chi_squares';    
+    if MLE_fit
         fits.err=(1-chi_squares./sum(2.*((mean(dataset,1)-dataset)-dataset.*log(mean(dataset,1)./dataset))))';
         errbad=fits.err<maxerr | states~=0;
     else
