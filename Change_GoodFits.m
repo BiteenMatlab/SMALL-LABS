@@ -1,4 +1,4 @@
-function Change_GoodFits(directoryname,new_maxerr,new_stdtol,new_dfrlmsz)
+function Change_GoodFits(directoryname,new_maxerr,new_stdtol,new_dfrlmsz,new_citol)
 %% Change_GoodFits 
 % This is a function to change the goodfits vector in the fits array. If
 % you don't want to change either maxerr or stdtol, then enter the
@@ -18,6 +18,10 @@ function Change_GoodFits(directoryname,new_maxerr,new_stdtol,new_dfrlmsz)
 %
 %  new_dfrlmsz is the new dfrlmsz that you want to use. If you don't want to
 %  change this then enter [] for new_dfrlmsz
+%
+%  citol is the modifier to tighten (<1) or loosen (>1) constraints on the
+%  confidence interval limit. If you don't want to change this then enter 
+%  [] for citol
 %
 %     Copyright (C) 2017  Benjamin P Isaacoff
 %
@@ -65,6 +69,8 @@ for ii=1:numel(dlocs);
     if ~isempty(new_maxerr);maxerr=new_maxerr;end
     if ~isempty(new_stdtol);stdtol=new_stdtol;end
     if ~isempty(new_dfrlmsz);dfrlmsz=new_dfrlmsz;end
+    if ~isempty(new_citol);citol=new_citol;end
+    if isempty(new_citol);citol=1;end
     
     %the conversion between dfrlmsz and the STD of the Gaussian, reccomended
     %using the full width at 20% max given by (2*sqrt(2*log(5)))
@@ -74,7 +80,8 @@ for ii=1:numel(dlocs);
     
     %%% make the new goodfits vector %%%
     goodfits=(mean([fits.widthc,fits.widthr],2)<=(stdtol*gesss) & mean([fits.widthc,fits.widthr],2)>=(gesss/stdtol)) & ...
-        all([fits.row,fits.col,fits.amp,fits.sum]>=0,2) & fits.amp<fits.sum & fits.err<maxerr;
+        all([fits.row,fits.col,fits.amp,fits.sum]>=0,2) & fits.amp<fits.sum & fits.err>maxerr & fits.rowCI<=citol*dfrlmsz ...
+        & fits.colCI<=citol*dfrlmsz;
     
     %update the fits array
     fits.goodfit=goodfits;

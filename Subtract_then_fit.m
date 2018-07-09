@@ -277,7 +277,7 @@ if usegpu
                 ~errbad(ii) && ... %too much error on fit?
                 fits.amp(ii)<fits.sum(ii) && ... %the amplitude of the fit shouldn't be bigger than the integral
                 ~any([fits.row(ii),fits.col(ii),fits.amp(ii),fits.sum(ii)]<0) && ... %none of the fitted parameters should be negative, except the offset!
-                fits.rowCI(ii)<=fits.widthr(ii) && fits.colCI(ii)<=fits.widthc(ii) %none of the localization errors are larger than the gaussian widths
+                fits.rowCI(ii)<=dfrlmsz && fits.colCI(ii)<=dfrlmsz %none of the localization errors are larger than the gaussian widths
             fits.goodfit(ii)=true;%goodfit boolean
         end
     end
