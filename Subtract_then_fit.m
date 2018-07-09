@@ -139,7 +139,7 @@ initial_parameters=single(NaN(5,size(guesses,1)));
 molr=guesses(:,2);
 molc=guesses(:,3);
 fits.frame=guesses(:,1);
-fits.molid=1:size(guesses,1);
+fits.molid=(1:size(guesses,1))';
 framelist=guesses(:,1);
 if MLE_fit && usegpu
 offset=NaN(1,size(guesses,1));
@@ -253,8 +253,8 @@ if usegpu
     else
         fits.ang=parameters(6,:);
     end
-    fits.err=(1-(chi_squares./((2*dfrlmsz+1)^2-size(parameters,1)))./(sum((dataset-mean(dataset,1)).^2)./size(parameters,1)))';
-    fits.chi_squares=chi_squares;
+    fits.err=(1-(chi_squares)./(sum((dataset-mean(dataset,1)).^2)))';
+    fits.chi_squares=chi_squares';    
     if MLE_fit
         fits.err=(1-chi_squares./sum(2.*((mean(dataset,1)-dataset)-dataset.*log(mean(dataset,1)./dataset))))';
         errbad=fits.err<maxerr | states~=0;
@@ -266,6 +266,9 @@ if usegpu
     else
         fits.sum=sum(dataset,1)';
     end
+    fits.rowCI=sqrt(((fits.widthr.^2+1/12)./fits.sum)+(8*pi().*fits.widthr.^4.*fits.chi_squares)./(fits.sum.^2)); %Localization error based on Thompson, Larson, and Webb Biophys J. 2002 82 2775–2783. Equation 17
+    fits.colCI=sqrt(((fits.widthc.^2+1/12)./fits.sum)+(8*pi().*fits.widthc.^4.*fits.chi_squares)./(fits.sum.^2)); %Where s is the gaussian width, a is the pixel size, N is the integrated intensity, and b is the fit error (chi-squares), all spatial units are in pixels
+
     %determining if it's a goodfit or not (remember this field was
     %initialized to false)
     fits.goodfit=false(size(guesses,1),1);
@@ -273,8 +276,8 @@ if usegpu
         if (mean([fits.widthr(ii),fits.widthc(ii)])<=(stdtol*gesss) && mean([fits.widthr(ii),fits.widthc(ii)])>=(gesss/stdtol)) && ... %Compare width with diffraction limit
                 ~errbad(ii) && ... %too much error on fit?
                 fits.amp(ii)<fits.sum(ii) && ... %the amplitude of the fit shouldn't be bigger than the integral
-                ~any([fits.row(ii),fits.col(ii),fits.amp(ii),fits.sum(ii)]<0) %none of the fitted parameters should be negative, except the offset!
-            
+                ~any([fits.row(ii),fits.col(ii),fits.amp(ii),fits.sum(ii)]<0) && ... %none of the fitted parameters should be negative, except the offset!
+                fits.rowCI(ii)<=fits.widthr(ii) && fits.colCI(ii)<=fits.widthc(ii) %none of the localization errors are larger than the gaussian widths
             fits.goodfit(ii)=true;%goodfit boolean
         end
     end
@@ -406,7 +409,6 @@ else
             %converting the variables to match the output of MLEwG, and
             %arranging for each particular Gaussian fit
             fit_r=fitPars(1);fit_c=fitPars(2);
-            fit_rCI=conf95(1);fit_cCI=conf95(2);
             if which_gaussian==1
                 fit_sd_r(ii)=fitPars(3);fit_sd_c(ii)=fitPars(3);
                 fit_off(ii)=fitPars(5);
@@ -441,8 +443,8 @@ else
         %Convert back into full frame coordinates, NOTE the -1!
         act_r(ii)=fit_r-dfrlmsz-1+molr(ii);
         act_c(ii)=fit_c-dfrlmsz-1+molc(ii);
-        act_rCI(ii)=fit_rCI;
-        act_cCI(ii)=fit_cCI;
+        act_rCI(ii)=conf95(1);
+        act_cCI(ii)=conf95(2);
         if (mean([fit_sd_r(ii),fit_sd_c(ii)])<=(stdtol*gesss) && mean([fit_sd_r(ii),fit_sd_c(ii)])>=(gesss/stdtol)) && ... %Compare width with diffraction limit
                 ~errbad && ... %too much error on fit?
                 fit_amp(ii)<sumsum(ii) && ... %the amplitude of the fit shouldn't be bigger than the integral
