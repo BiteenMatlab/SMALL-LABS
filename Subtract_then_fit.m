@@ -266,7 +266,7 @@ if usegpu
     else
         fits.sum=sum(dataset,1)';
     end
-    fits.rowCI=sqrt(((fits.widthr.^2+1/12)./fits.sum)+(8*pi().*fits.widthr.^4.*fits.chi_squares)./(fits.sum.^2)); %Localization error based on Thompson, Larson, and Webb Biophys J. 2002 82 2775–2783. Equation 17
+    fits.rowCI=sqrt(((fits.widthr.^2+1/12)./fits.sum)+(8*pi().*fits.widthr.^4.*fits.chi_squares)./(fits.sum.^2)); %Localization error based on Thompson, Larson, and Webb Biophys J. 2002 82 2775Â–2783. Equation 17
     fits.colCI=sqrt(((fits.widthc.^2+1/12)./fits.sum)+(8*pi().*fits.widthc.^4.*fits.chi_squares)./(fits.sum.^2)); %Where s is the gaussian width, a is the pixel size, N is the integrated intensity, and b is the fit error (chi-squares), all spatial units are in pixels
 
     %determining if it's a goodfit or not (remember this field was
@@ -366,6 +366,7 @@ else
     fits.err=NaN(size(guesses,1),1);%error on fit
     fits.sum=sum(dataset,1)';%sum of pixels in ROI around guess
     fits.goodfit=false(size(guesses,1),1);%goodfit boolean
+    goodfit=false(size(guesses,1),1);%goodfit boolean
     sumsum=fits.sum;
     fit_sd_r=NaN(size(guesses,1),1);
     fit_sd_rCI=NaN(size(guesses,1),1);
