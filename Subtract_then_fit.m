@@ -475,7 +475,7 @@ else
     fits.amp=fit_amp;%amplitude of Gaussian fit
     fits.ampCI=fit_ampCI;%Confidence interval of amplitude of Gaussian fit
     fits.err=fit_err;%error on fit
-    fits.goodfit=goodfit';%determining if it's a goodfit or not (remember this field was
+    fits.goodfit=goodfit;%determining if it's a goodfit or not (remember this field was
     %initialized to false)
     
     
