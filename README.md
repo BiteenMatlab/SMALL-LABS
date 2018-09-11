@@ -27,22 +27,60 @@ Please inform us (isaacoff@umich.edu) before making any changes, then follow the
 
 ## Credits
 
-All individual programs should have all their individual attributions still in place including authors. 
+All individual programs should have all their individual attributions in place including authors. 
 
 This code was developed with support from the National Science Foundation (NSF grant CHE-1252322).
 
 The development of this code is greatly indebted to the work of David J Rowland (often referred to as DJR in the code). In addition to containing some functions written by him, I’ve borrowed a lot of code snippets from his programs.
 
-The code not written by BPI:
+SMALL-LABS uses a number of open-source codes and algorithms:
 
-*TiffStack* by DR Muir and BM Kampa  
-*saveastiff* by YoonOh Tak  
-*bpass* by John C. Crocker and David G. Grier  
-*MLEwG* by KI Mortensen, LS Churchman, JA Spudich, H Flyvbjerg  
-*gaussFit* by David J Rowland  
-*Track_3D2* by David J Rowland   
-*hungarian* by Yi Cao  
-*gpufit* by Adrian Przybylski, Björn Thiel, Jan Keller-Findeisen, Bernd Stock, and Mark Bates
+**_TiffStack_** by DR Muir and BM Kampa 
+
+DR Muir and BM Kampa. 2015. FocusStack and StimServer: A new open source MATLAB toolchain for visual stimulation and analysis of two-photon calcium neuronal imaging data, **Frontiers in Neuroinformatics** 8 *85*. DOI:10.3389/fninf.2014.00085
+
+TIFFStack by Dylan Muir is licensed under a Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International License.
+Based on a work at http://github.com/DylanMuir/TIFFStack
+
+**_saveastiff_** by YoonOh Tak
+
+Copyright (c) 2012, YoonOh Tak
+All rights reserved.
+Available at https://www.mathworks.com/matlabcentral/fileexchange/35684-multipage-tiff-stack
+
+**_bpass_** by John C. Crocker and David G. Grier  
+
+Copyright (c) 1997, John C. Crocker and David G. Grier
+Available at http://www.physics.emory.edu/faculty/weeks//idl/
+
+**_MLEwG_** by KI Mortensen, LS Churchman, JA Spudich, H Flyvbjerg
+
+K. I. Mortensen, L. S. Churchman, J. A. Spudich, and H. Flyvbjerg, Nat. Methods **7**, 377 (2010) doi:10.1038/nmeth.1447 
+
+**_gaussFit_** by David J Rowland
+
+David J.Rowland, Julie S.Biteen. Measuring molecular motions inside single cells with improved analysis of single-particle trajectories. Chemical Physics Letters, **674**, 173-178, 2017. DOI:10.1016/j.cplett.2017.02.052
+
+The code 'gaussFit.m' should be considered 'freeware'- and may be distributed freely in its original form when properly attributed.
+
+**_Track_3D2_** by David J Rowland 
+
+David J.Rowland, Julie S.Biteen. Measuring molecular motions inside single cells with improved analysis of single-particle trajectories. Chemical Physics Letters, **674**, 173-178, 2017. DOI:10.1016/j.cplett.2017.02.052
+
+The code 'Track_3D2.m' should be considered 'freeware'- and may be distributed freely in its original form when properly attributed
+
+**_hungarian_** by Yi Cao 
+Available at https://www.mathworks.com/matlabcentral/fileexchange/20652-hungarian-algorithm-for-linear-assignment-problems-v2-3
+
+**_gpufit_** by Adrian Przybylski, Björn Thiel, Jan Keller-Findeisen, Bernd Stock, and Mark Bates
+
+Gpufit: An open-source toolkit for GPU-accelerated curve fitting
+Adrian Przybylski, Björn Thiel, Jan Keller-Findeisen, Bernd Stock, and Mark Bates
+Scientific Reports, vol. 7, 15722 (2017); doi: https://doi.org/10.1038/s41598-017-15313-9
+
+MIT License.
+Copyright (c) 2017 Mark Bates, Adrian Przybylski, Björn Thiel, and Jan Keller-Findeisen
+
 
 ## License
 
