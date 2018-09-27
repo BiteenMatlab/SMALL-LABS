@@ -107,8 +107,8 @@ if isscalar(mov_prd)
             
             if ii>1 && firstthru
                 ROIclicks=ROIs{ii-1};
-                ROIpos=[ROIclicks(2,1),ROIclicks(1,2),ROIclicks(1,1)-ROIclicks(2,1),...
-                    ROIclicks(2,2)-ROIclicks(1,2)];
+                ROIpos=[min(ROIclicks(:,1)),min(ROIclicks(:,2)),abs(ROIclicks(1,1)-ROIclicks(2,1)),...
+                    abs(ROIclicks(2,2)-ROIclicks(1,2))];
                 
                 hold on
                 rectangle('Position',ROIpos,'EdgeColor','r')
@@ -130,8 +130,8 @@ if isscalar(mov_prd)
                 
                 %the position vector for the rectangle object [x,y,w,h], where x,y
                 %is the lower left corner
-                ROIpos=[ROIclicks(2,1),ROIclicks(1,2),ROIclicks(1,1)-ROIclicks(2,1),...
-                    ROIclicks(2,2)-ROIclicks(1,2)];
+                ROIpos=[min(ROIclicks(:,1)),min(ROIclicks(:,2)),abs(ROIclicks(1,1)-ROIclicks(2,1)),...
+                    abs(ROIclicks(2,2)-ROIclicks(1,2))];
                 
                 hold on
                 rectangle('Position',ROIpos,'EdgeColor','r')
@@ -166,15 +166,13 @@ for ii=1:numel(dlocs);
         %which ROI click corresponds to this movie?
         ROIclicks=ROIs{find(movs_show<=ii,1,'last')};
     else
-        ROIclicks=ROIs
+        ROIclicks=ROIs;
     end
     
-    newmov=tfstk(ROIclicks(1,2):ROIclicks(2,2),ROIclicks(2,1):ROIclicks(1,1),:);
+    mov=tfstk(min(ROIclicks(:,2)):max(ROIclicks(:,2)),min(ROIclicks(:,1)):max(ROIclicks(:,1)),:);
     
     %%%%Save the movie%%%%
-    options.overwrite=true;
-    %save using saveastiff
-    saveastiff(newmov,[pathstr,filesep,fname,append_str,'.tif'],options);
+    save([pathstr,filesep,fname,append_str,'.mat'],'mov','-v7.3');
     
     tictoc=toc;%the time to run the entire program
     
