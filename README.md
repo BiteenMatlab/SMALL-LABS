@@ -6,6 +6,8 @@ The program can also fit single molecules without doing background subtraction. 
 
 Written by Benjamin P Isaacoff at the University of Michigan.
 
+This algorithm is described in B.P. Isaacoff, Y. Li, S.A. Lee and J.S. Biteen, “SMALL-LABS: An algorithm for measuring single-molecule intensity and position in the presence of obscuring backgrounds,” _Biophysical Journal_, in press (**2019**). https://doi.org/10.1016/j.bpj.2019.02.006
+
 ## Installation
 
 Download the entire folder and unzip if you downloaded the .zip folder. Change the working directory in Matlab to this folder and call the functions in the Matlab command window as described in the User Guide.
