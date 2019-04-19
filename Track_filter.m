@@ -70,9 +70,9 @@ if verbose
 disp([char(datetime),'   Tracking ',fname])
 end
 tracks = Tracking(fits_fname,fits,trackparams,savetracks);
-if ~isempty(tracks)
-    save(fits_fname,'tracks','trackparams','-append')
-    
+
+save(fits_fname,'tracks','trackparams','-append')
+if ~isempty(tracks)   
     % remove the first and last entries of each track
     for ii=1:max(tracks(:,4))
         %the molecules in the current track
