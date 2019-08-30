@@ -102,6 +102,7 @@ for ii=1:numel(dlocs)
         %check how big the file is and compare to the available memory so
         %as to keep this moving quickly and avoid going into the swap the
         %size of the current movie
+        try
         fmem=dir(filename);
         fmem=fmem.bytes;
         %the currently available memory
@@ -110,7 +111,9 @@ for ii=1:numel(dlocs)
         %determine a reasonable number of chunks to import by comparing the
         %filesize to 90% of the available memory
         numchunks=floor(fmem/(0.9*curmem))+1;
-        
+        catch
+        numchunks=1;
+        end
         %% go through and import the different filetypes
         %if it's a .tif stack use TIFFStack
         if strcmp(exts{ii},'.tif') || strcmp(exts{ii},'.tiff')
